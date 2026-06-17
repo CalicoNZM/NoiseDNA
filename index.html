@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>NoiseDNA — Smart City Noise Intelligence Platform</title>
+        <link rel="icon" type="image/png" href="NoiseDNA.png" />
+        <link rel="apple-touch-icon" href="NoiseDNA.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Oswald:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        />
+        <link rel="stylesheet" href="css/style.css" />
+    </head>
+    <body>
+        
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo" id="appLogo">
+                    <img
+                        src="NoiseDNA.png"
+                        alt="NoiseDNA"
+                        class="logo-img"
+                        id="logoImage"
+                    />
+                    <div class="logo-text">
+                        <span class="logo-title">NoiseDNA</span>
+                        <span class="logo-subtitle" id="orgSubtitle">NYC Case Study</span>
+                    </div>
+                </div>
+            </div>
+            <div class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-gauge-high"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-section="map">
+                    <i class="fas fa-map-location-dot"></i>
+                    <span>Live Map</span>
+                </a>
+                <a href="#" class="nav-item" data-section="forecast">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Forecast</span>
+                </a>
+                <a href="#" class="nav-item" data-section="routes">
+                    <i class="fas fa-route"></i>
+                    <span>Quiet Routes</span>
+                </a>
+                <a href="#" class="nav-item" data-section="advisor">
+                    <i class="fas fa-building"></i>
+                    <span>Building Advisor</span>
+                </a>
+                <a href="#" class="nav-item" data-section="zones">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>Sensitive Zones</span>
+                </a>
+                <a href="#" class="nav-item" data-section="community">
+                    <i class="fas fa-comments"></i>
+                    <span>Community</span>
+                </a>
+                <a href="#" class="nav-item" data-section="reports">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Reports</span>
+                </a>
+            </div>
+            <div class="sidebar-footer">
+                <button
+                    class="dark-toggle"
+                    id="darkToggle"
+                    title="Toggle Dark Mode"
+                >
+                    <i class="fas fa-moon"></i>
+                    <span>Dark Mode</span>
+                </button>
+                <button class="legacy-toggle" id="legacyToggle" title="Toggle Caldera Style">
+                    <i class="fas fa-paint-roller"></i>
+                    <span>Legacy</span>
+                </button>
+                <div class="sidebar-location" id="sidebarLocation">
+                    <i class="fas fa-location-dot"></i>
+                    <span id="locationName">NYC Case Study</span>
+                </div>
+                <div class="sidebar-status">
+                    <span class="status-dot"></span>
+                    <span id="sidebarOrg">NYC Case Study</span>
+                    <span style="opacity:0.5">·</span>
+                    <span>v3.0</span>
+                </div>
+            </div>
+        </nav>
+
+        
+        <button class="mobile-toggle" id="mobileToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        
+        <main class="main-content" id="mainContent">
+            
+            <section class="page-section active" id="page-dashboard">
+                <div class="page-header">
+                    <h1>City Noise Intelligence Dashboard</h1>
+                    <p class="page-subtitle">
+                        Real-time noise monitoring at
+                        <strong id="dashLocation">NYC Case Study</strong>
+                    </p>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card noise-gauge-card">
+                        <div class="card-header">
+                            <span>Current Ambient Noise</span>
+                            <span class="badge live-badge"
+                                ><span class="live-dot"></span> LIVE</span
+                            >
+                        </div>
+                        <div class="gauge-container">
+                            <canvas
+                                id="noiseGauge"
+                                width="280"
+                                height="160"
+                            ></canvas>
+                            <div class="gauge-value" id="gaugeValue">67</div>
+                            <div class="gauge-unit">dB</div>
+                        </div>
+                        <div class="gauge-labels">
+                            <span>0 dB</span>
+                            <span>140 dB</span>
+                        </div>
+                        <button class="record-btn" id="recordBtn" data-recording="false">
+                            <i class="fas fa-microphone"></i>
+                            <span id="recordLabel">Start Recording</span>
+                        </button>
+                    </div>
+
+                    <div class="card risk-card">
+                        <div class="card-header">
+                            <span>Noise Risk Status</span>
+                        </div>
+                        <div class="risk-indicator" id="riskIndicator">
+                            <div class="risk-ring">
+                                <div class="risk-ring-segment quiet"></div>
+                                <div class="risk-ring-segment moderate"></div>
+                                <div class="risk-ring-segment loud"></div>
+                                <div class="risk-ring-segment dangerous"></div>
+                            </div>
+                        </div>
+                        <div class="risk-status" id="riskStatus">
+                            <div class="risk-icon">
+                                <i class="fas fa-volume-high"></i>
+                            </div>
+                            <div class="risk-label">Moderate</div>
+                            <div class="risk-desc">
+                                Caution advised in high-traffic areas
+                            </div>
+                        </div>
+                        <div class="risk-legend">
+                            <span
+                                ><span class="dot quiet-dot"></span> Quiet
+                                ≤50</span
+                            >
+                            <span
+                                ><span class="dot moderate-dot"></span> Moderate
+                                51–65</span
+                            >
+                            <span
+                                ><span class="dot loud-dot"></span> Loud
+                                66–80</span
+                            >
+                            <span
+                                ><span class="dot dangerous-dot"></span>
+                                Dangerous >80</span
+                            >
+                        </div>
+                    </div>
+
+                    <div class="card card-full quick-stats-card">
+                        <div class="card-header">
+                            <span>Quick Stats</span>
+                        </div>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div
+                                    class="stat-icon"
+                                    style="background: rgba(6, 182, 212, 0.15)"
+                                >
+                                    <i
+                                        class="fas fa-microphone"
+                                        style="color: #06b6d4"
+                                    ></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="statPeak"
+                                        >82</span
+                                    >
+                                    <span class="stat-label">Peak (dB)</span>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div
+                                    class="stat-icon"
+                                    style="background: rgba(16, 185, 129, 0.15)"
+                                >
+                                    <i
+                                        class="fas fa-volume-low"
+                                        style="color: #10b981"
+                                    ></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="statLow"
+                                        >42</span
+                                    >
+                                    <span class="stat-label">Low (dB)</span>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div
+                                    class="stat-icon"
+                                    style="background: rgba(245, 158, 11, 0.15)"
+                                >
+                                    <i
+                                        class="fas fa-clock"
+                                        style="color: #f59e0b"
+                                    ></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="statAvg"
+                                        >67</span
+                                    >
+                                    <span class="stat-label">24h Avg (dB)</span>
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div
+                                    class="stat-icon"
+                                    style="background: rgba(239, 68, 68, 0.15)"
+                                >
+                                    <i
+                                        class="fas fa-triangle-exclamation"
+                                        style="color: #ef4444"
+                                    ></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="statAlerts"
+                                        >3</span
+                                    >
+                                    <span class="stat-label"
+                                        >Active Alerts</span
+                                    >
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div
+                                    class="stat-icon"
+                                    style="background: rgba(168, 85, 247, 0.15)"
+                                >
+                                    <i
+                                        class="fas fa-tree"
+                                        style="color: #a855f7"
+                                    ></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value">1,247</span>
+                                    <span class="stat-label"
+                                        >Trees Planted</span
+                                    >
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div
+                                    class="stat-icon"
+                                    style="background: rgba(236, 72, 153, 0.15)"
+                                >
+                                    <i
+                                        class="fas fa-people-group"
+                                        style="color: #ec4899"
+                                    ></i>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-value">2.4M</span>
+                                    <span class="stat-label"
+                                        >People Protected</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card source-card">
+                        <div class="card-header">
+                            <span>Noise Source Distribution</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="sourceChart"></canvas>
+                        </div>
+                        <div class="source-legend" id="sourceLegend"></div>
+                    </div>
+
+                    <div class="card hourly-card">
+                        <div class="card-header">
+                            <span>15-Second Noise Trend</span>
+                            <span class="badge"><i class="fas fa-waveform"></i> Live</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="hourlyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card card-full alerts-card">
+                        <div class="card-header">
+                            <span>Active Noise Alerts</span>
+                        </div>
+                        <div class="alerts-list">
+                            <div class="alert-item danger">
+                                <div class="alert-icon">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                                <div class="alert-info">
+                                    <span class="alert-location"
+                                        >Times Square</span
+                                    >
+                                    <span class="alert-desc"
+                                        >Construction noise exceeding limits ·
+                                        87 dB</span
+                                    >
+                                </div>
+                                <span class="alert-time">2 min ago</span>
+                            </div>
+                            <div class="alert-item warning">
+                                <div class="alert-icon">
+                                    <i class="fas fa-road"></i>
+                                </div>
+                                <div class="alert-info">
+                                    <span class="alert-location"
+                                        >FDR Drive Corridor</span
+                                    >
+                                    <span class="alert-desc"
+                                        >Traffic surge detected · 79 dB</span
+                                    >
+                                </div>
+                                <span class="alert-time">15 min ago</span>
+                            </div>
+                            <div class="alert-item warning">
+                                <div class="alert-icon">
+                                    <i class="fas fa-train"></i>
+                                </div>
+                                <div class="alert-info">
+                                    <span class="alert-location"
+                                        >Grand Central Terminal</span
+                                    >
+                                    <span class="alert-desc"
+                                        >Railway activity peak · 76 dB</span
+                                    >
+                                </div>
+                                <span class="alert-time">42 min ago</span>
+                            </div>
+                            <div class="alert-item info">
+                                <div class="alert-icon">
+                                    <i class="fas fa-microphone"></i>
+                                </div>
+                                <div class="alert-info">
+                                    <span class="alert-location"
+                                        >NYC Sensor Network Node #A7</span
+                                    >
+                                    <span class="alert-desc"
+                                        >Sensor recalibrated · Normal
+                                        readings</span
+                                    >
+                                </div>
+                                <span class="alert-time">1h ago</span>
+                            </div>
+                            <div class="alert-item success">
+                                <div class="alert-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="alert-info">
+                                    <span class="alert-location"
+                                        >Central Park</span
+                                    >
+                                    <span class="alert-desc"
+                                        >Noise levels normalized after green
+                                        barrier intervention</span
+                                    >
+                                </div>
+                                <span class="alert-time">3h ago</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            
+            <section class="page-section" id="page-map">
+                <div class="page-header">
+                    <h1>Live Noise Map</h1>
+                    <p class="page-subtitle">
+                        Real-time noise hotspot visualization around
+                        <strong id="mapLocation">NYC Case Study</strong>
+                    </p>
+                </div>
+                <div class="map-container map-full" style="height: 500px;">
+                    <div id="noiseMap"></div>
+                    <div class="map-overlay">
+                        <div class="map-legend">
+                            <span class="map-legend-title"
+                                >Noise Intensity</span
+                            >
+                            <div class="map-legend-gradient">
+                                <span>30 dB</span>
+                                <span>60 dB</span>
+                                <span>90 dB</span>
+                                <span>120 dB</span>
+                            </div>
+                            <div class="map-legend-bar"></div>
+                        </div>
+                        <div class="map-controls">
+                            <button class="map-btn active" data-layer="noise">
+                                <i class="fas fa-fire"></i> Heatmap
+                            </button>
+                            <button class="map-btn" data-layer="traffic">
+                                <i class="fas fa-car"></i> Traffic
+                            </button>
+                            <button class="map-btn" data-layer="zones">
+                                <i class="fas fa-shield"></i> Zones
+                            </button>
+                            <button class="map-btn" data-layer="sensors">
+                                <i class="fas fa-circle-dot"></i> Sensors
+                            </button>
+                        </div>
+                        <div class="map-stats">
+                            <div>
+                                <span class="map-stat-label">Hotspots</span
+                                ><span class="map-stat-value" id="mapHotspots"
+                                    >24</span
+                                >
+                            </div>
+                            <div>
+                                <span class="map-stat-label">Max</span
+                                ><span class="map-stat-value" id="mapMax"
+                                    >94 dB</span
+                                >
+                            </div>
+                            <div>
+                                <span class="map-stat-label"
+                                    >Active Sensors</span
+                                ><span class="map-stat-value" id="mapSensors"
+                                    >156</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            
+            <section class="page-section" id="page-forecast">
+                <div class="page-header">
+                    <h1>Noise Forecast System</h1>
+                    <p class="page-subtitle">
+                        AI-powered noise predictions for
+                        <strong id="forecastLocation">NYC Case Study</strong>
+                    </p>
+                </div>
+
+                <div class="forecast-tabs">
+                    <button class="forecast-tab active" data-period="today">
+                        Today
+                    </button>
+                    <button class="forecast-tab" data-period="tomorrow">
+                        Tomorrow
+                    </button>
+                    <button class="forecast-tab" data-period="week">
+                        This Week
+                    </button>
+                </div>
+
+                <div class="forecast-grid">
+                    <div class="card hourly-forecast-card">
+                        <div class="card-header">
+                            <span>Hourly Forecast</span>
+                            <span class="badge"
+                                ><i class="fas fa-robot"></i> AI
+                                Prediction</span
+                            >
+                        </div>
+                        <div
+                            class="forecast-timeline"
+                            id="forecastTimeline"
+                        ></div>
+                        <div class="chart-container" style="height: 200px">
+                            <canvas id="forecastChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card daily-forecast-card">
+                        <div class="card-header">
+                            <span>Daily Summary</span>
+                        </div>
+                        <div class="daily-cards" id="dailyCards"></div>
+                    </div>
+
+                    <div class="card forecast-insights">
+                        <div class="card-header">
+                            <span>AI Insights</span>
+                        </div>
+                        <div class="insights-list" id="insightsList">
+                            <div class="insight-item">
+                                <i class="fas fa-sun"></i>
+                                <div>
+                                    <strong>Morning Dip</strong>
+                                    <p>
+                                        Noise levels drop 40% between 2 AM – 5
+                                        AM. Optimal for maintenance.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="insight-item">
+                                <i class="fas fa-clock"></i>
+                                <div>
+                                    <strong>Rush Hour Spike</strong>
+                                    <p>
+                                        Predicted 78 dB at 5 PM. Consider
+                                        alternative routes.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="insight-item">
+                                <i class="fas fa-calendar"></i>
+                                <div>
+                                    <strong>Weekend Effect</strong>
+                                    <p>
+                                        Weekend average 12 dB lower than
+                                        weekdays.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="insight-item">
+                                <i class="fas fa-umbrella"></i>
+                                <div>
+                                    <strong>Weather Impact</strong>
+                                    <p>
+                                        Rain expected Thu. Noise reduces 15% due
+                                        to wet roads.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            
+            <section class="page-section" id="page-routes">
+                <div class="page-header">
+                    <h1>Quiet Route Navigation</h1>
+                    <p class="page-subtitle">
+                        Find the quietest path from your location to any destination
+                    </p>
+                </div>
+
+                <div class="route-inputs">
+                    <div class="route-input-group">
+                        <div class="input-icon">
+                            <i class="fas fa-circle-dot" style="color: #10b981"></i>
+                        </div>
+                        <select class="route-input route-select" id="routeStart">
+                            <option value="current">📍 Current Location</option>
+                            <option value="Times Square, NYC">Times Square</option>
+                            <option value="Grand Central Terminal">Grand Central</option>
+                            <option value="Brooklyn Bridge">Brooklyn Bridge</option>
+                            <option value="Central Park">Central Park</option>
+                            <option value="Union Square">Union Square</option>
+                        </select>
+                    </div>
+                    <div class="route-swap" id="routeSwap">
+                        <i class="fas fa-arrow-right-arrow-left"></i>
+                    </div>
+                    <div class="route-input-group">
+                        <div class="input-icon">
+                            <i class="fas fa-location-dot" style="color: #ef4444"></i>
+                        </div>
+                        <select class="route-input route-select" id="routeEnd">
+                            <option value="">Choose destination...</option>
+                            <option value="Central Park">Central Park</option>
+                            <option value="Times Square, NYC">Times Square</option>
+                            <option value="Brooklyn Bridge">Brooklyn Bridge</option>
+                            <option value="Grand Central Terminal">Grand Central</option>
+                            <option value="Union Square">Union Square</option>
+                            <option value="Wall Street">Wall Street</option>
+                            <option value="Madison Square Garden">Madison Square Garden</option>
+                            <option value="One World Trade Center">One World Trade Center</option>
+                        </select>
+                    </div>
+                    <button class="route-find-btn" id="routeFindBtn">
+                        <i class="fas fa-magnifying-glass"></i> Find Routes
+                    </button>
+                </div>
+
+                <div class="route-results" id="routeResults">
+                    <div class="route-card fastest" data-route="fastest">
+                        <div class="route-type">
+                            <i class="fas fa-bolt"></i>
+                            <span>Fastest Route</span>
+                        </div>
+                        <div class="route-details">
+                            <div class="route-detail">
+                                <i class="fas fa-clock"></i>
+                                <span>18 min</span>
+                            </div>
+                            <div class="route-detail">
+                                <i class="fas fa-ruler"></i>
+                                <span>4.2 km</span>
+                            </div>
+                            <div class="route-detail">
+                                <i class="fas fa-volume-up"></i>
+                                <span>72 dB avg</span>
+                            </div>
+                            <div class="route-detail">
+                                <i class="fas fa-star"></i>
+                                <span>Noise Score: 64</span>
+                            </div>
+                        </div>
+                        <div class="route-bar" style="--pct: 100%"></div>
+                        <div class="route-select-btn">Select</div>
+                    </div>
+
+                    <div
+                        class="route-card balanced active"
+                        data-route="balanced"
+                    >
+                        <div class="route-type">
+                            <i class="fas fa-scale-balanced"></i>
+                            <span>Balanced Route</span>
+                        </div>
+                        <div class="route-details">
+                            <div class="route-detail">
+                                <i class="fas fa-clock"></i>
+                                <span>24 min</span>
+                            </div>
+                            <div class="route-detail">
+                                <i class="fas fa-ruler"></i>
+                                <span>5.1 km</span>
+                            </div>
+                            <div class="route-detail">
+                                <i class="fas fa-volume-up"></i>
+                                <span>58 dB avg</span>
+                            </div>
+                            <div class="route-detail">
+                                <i class="fas fa-star"></i>
+                                <span>Noise Score: 82</span>
+                            </div>
+                        </div>
+                        <div class="route-bar" style="--pct: 72%"></div>
+                        <div class="route-select-btn">Selected</div>
+                    </div>
+
+                    <div class="route-card quietest" data-route="quietest">
+                        <div class="route-type">
+                            <i class="fas fa-leaf"></i>
+                            <span>Quietest Route</span>
+                        </div>
+                        <div class="route-details">
+                            <div class="route-detail">
+                                <i class="fas fa-clock"></i>
+                                <span>32 min</span>
+                            </div>
+                            <div class="route-detail">
+                                <i class="fas fa-ruler"></i>
+                                <span>6.8 km</span>
+                            </div>
+                            <div class="route-detail">
+                                <i class="fas fa-volume-up"></i>
+                                <span>45 dB avg</span>
+                            </div>
+                            <div class="route-detail">
+                                <i class="fas fa-star"></i>
+                                <span>Noise Score: 94</span>
+                            </div>
+                        </div>
+                        <div class="route-bar" style="--pct: 52%"></div>
+                        <div class="route-select-btn">Select</div>
+                    </div>
+                </div>
+
+                <div class="route-map-mini" id="routeMiniMap"></div>
+            </section>
+
+            
+            <section class="page-section" id="page-advisor">
+                <div class="page-header">
+                    <h1>Smart Building Advisor</h1>
+                    <p class="page-subtitle">
+                        AI-powered noise reduction recommendations for NYC
+                        buildings
+                    </p>
+                </div>
+
+                <div class="advisor-grid">
+                    <div class="card building-info">
+                        <div class="card-header">
+                            <span>Building Profile</span>
+                        </div>
+                        <div class="building-profile">
+                            <div class="bp-field">
+                                <label>Building Type</label>
+                                <select class="form-select" id="buildingType">
+                                    <option value="residential">
+                                        Residential
+                                    </option>
+                                    <option value="school" selected>
+                                        School
+                                    </option>
+                                    <option value="hospital">Hospital</option>
+                                    <option value="office">
+                                        Office Building
+                                    </option>
+                                    <option value="library">Library</option>
+                                </select>
+                            </div>
+                            <div class="bp-field">
+                                <label>Floors</label>
+                                <select class="form-select" id="buildingFloors">
+                                    <option>1–3</option>
+                                    <option selected>4–8</option>
+                                    <option>9–15</option>
+                                    <option>16+</option>
+                                </select>
+                            </div>
+                            <div class="bp-field">
+                                <label>Proximity to Road</label>
+                                <select
+                                    class="form-select"
+                                    id="buildingProximity"
+                                >
+                                    <option>Direct (0–10m)</option>
+                                    <option selected>Near (10–50m)</option>
+                                    <option>Moderate (50–200m)</option>
+                                    <option>Far (200m+)</option>
+                                </select>
+                            </div>
+                            <div class="bp-field">
+                                <label>Current Noise Level</label>
+                                <span class="bp-noise" id="buildingCurrentNoise"
+                                    >62 dB</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card recommendations">
+                        <div class="card-header">
+                            <span>AI Recommendations</span>
+                            <span class="badge"
+                                ><i class="fas fa-brain"></i> AI Generated</span
+                            >
+                        </div>
+                        <div class="recs-list" id="recsList"></div>
+                    </div>
+                </div>
+            </section>
+
+            
+            <section class="page-section" id="page-zones">
+                <div class="page-header">
+                    <h1>Sensitive Zone Protection</h1>
+                    <p class="page-subtitle">
+                        Monitoring and protecting New York's noise-sensitive
+                        areas
+                    </p>
+                </div>
+
+                <div class="zones-grid">
+                    <div class="card zone-card school">
+                        <div class="zone-header">
+                            <i class="fas fa-school"></i>
+                            <span>NYC Public Schools</span>
+                        </div>
+                        <div class="zone-body">
+                            <div class="zone-stat">
+                                <span>Current</span>
+                                <span class="z-val zone-moderate">58 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Predicted Peak</span>
+                                <span class="z-val zone-loud">72 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Risk Level</span>
+                                <span class="z-badge moderate">Moderate</span>
+                            </div>
+                            <div class="zone-actions">
+                                <strong>Recommended Actions:</strong>
+                                <ul>
+                                    <li>
+                                        <i class="fas fa-tree"></i> Install tree
+                                        barriers near playgrounds
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-ban"></i> Restrict
+                                        construction 8 AM – 3 PM
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-road"></i> Reroute
+                                        trucks away from school zones
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card zone-card hospital">
+                        <div class="zone-header">
+                            <i class="fas fa-hospital"></i>
+                            <span>NYC Hospitals</span>
+                        </div>
+                        <div class="zone-body">
+                            <div class="zone-stat">
+                                <span>Current</span>
+                                <span class="z-val zone-moderate">52 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Predicted Peak</span>
+                                <span class="z-val zone-moderate">65 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Risk Level</span>
+                                <span class="z-badge moderate">Moderate</span>
+                            </div>
+                            <div class="zone-actions">
+                                <strong>Recommended Actions:</strong>
+                                <ul>
+                                    <li>
+                                        <i class="fas fa-grip"></i> Acoustic
+                                        barriers around ER entrances
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-leaf"></i> Green roof
+                                        installation citywide
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-volume-xmark"></i>
+                                        Soundproof windows (ICU wings)
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card zone-card library">
+                        <div class="zone-header">
+                            <i class="fas fa-book"></i>
+                            <span>NYPL Branches</span>
+                        </div>
+                        <div class="zone-body">
+                            <div class="zone-stat">
+                                <span>Current</span>
+                                <span class="z-val zone-quiet">38 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Predicted Peak</span>
+                                <span class="z-val zone-moderate">55 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Risk Level</span>
+                                <span class="z-badge low">Low</span>
+                            </div>
+                            <div class="zone-actions">
+                                <strong>Recommended Actions:</strong>
+                                <ul>
+                                    <li>
+                                        <i class="fas fa-tree"></i> Maintain
+                                        existing green buffers
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-door-open"></i> Install
+                                        acoustic entrance vestibules
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-clock"></i> Monitor
+                                        during exam periods
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            
+            <section class="page-section" id="page-community">
+                <div class="page-header">
+                    <h1>Community Noise Forum</h1>
+                    <p class="page-subtitle">
+                        Share and discover noise-related experiences in your neighborhood
+                    </p>
+                </div>
+
+                <div class="community-feed" id="communityPosts"></div>
+            </section>
+
+            
+            <section class="page-section" id="page-reports">
+                <div class="page-header">
+                    <h1>Community Reports</h1>
+                    <p class="page-subtitle">
+                        Submit and browse noise, temperature, air quality, and vibration reports
+                    </p>
+                </div>
+
+                <div class="reports-grid">
+                    <div class="card report-form-card">
+                        <div class="card-header">
+                            <span>Submit a Report</span>
+                        </div>
+                        <form class="report-form" id="reportForm">
+                            <div class="form-group">
+                                <label for="reportType">Report Type</label>
+                                <select class="form-select" id="reportType" required>
+                                    <option value="">Select type...</option>
+                                    <option value="noise">Noise</option>
+                                    <option value="temperature">Temperature</option>
+                                    <option value="airquality">Air Quality</option>
+                                    <option value="vibration">Vibration</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="reportLocation">Location</label>
+                                <input type="text" class="form-input" id="reportLocation" placeholder="e.g. Times Square, NYC" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="reportDescription">Description</label>
+                                <textarea class="form-input form-textarea" id="reportDescription" rows="4" placeholder="Describe what you observed..." required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="reportSeverity">Severity</label>
+                                <select class="form-select" id="reportSeverity" required>
+                                    <option value="low">Low</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="report-submit-btn">
+                                <i class="fas fa-paper-plane"></i> Submit Report
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="card recent-reports-card">
+                        <div class="card-header">
+                            <span>Recent Reports</span>
+                        </div>
+                        <div class="recent-reports-list" id="reportsList"></div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        
+        <div class="slider-controls" id="sliderControls">
+            <button class="slider-arrow slider-prev" id="sliderPrev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="slider-dots" id="sliderDots"></div>
+            <button class="slider-arrow slider-next" id="sliderNext">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+        <script src="js/api.js"></script>
+        <script src="js/app.js"></script>
+    </body>
+</html>

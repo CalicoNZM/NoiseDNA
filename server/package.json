@@ -1,0 +1,14 @@
+{
+  "name": "noisedna-server",
+  "version": "3.0.0",
+  "description": "NoiseDNA Smart City Platform – Backend API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5"
+  }
+}
