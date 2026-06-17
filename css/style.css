@@ -160,6 +160,7 @@ body {
   image-rendering: auto;
   margin-bottom: 6px;
   transition: width 0.3s ease, height 0.3s ease;
+  filter: hue-rotate(120deg) saturate(1.1);
 }
 
 .logo-img.logo-sm { --logo-size: 32px; }
@@ -1392,6 +1393,7 @@ body {
 
 .legacy .logo-img.legacy-logo {
   content: url('BlueNoiseDNA.png');
+  filter: none;
 }
 
 .auth-modal-overlay {
