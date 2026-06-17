@@ -401,6 +401,9 @@
     micAnimFrame: null,
     lastFreqData: null,
     reports: [],
+    currentUser: null,
+    authMode: 'login',
+    communityPosts: [],
   };
 
   let gaugeCanvas, gaugeValue;
@@ -699,43 +702,77 @@
 
   function locateUser() {
     if (!navigator.geolocation) {
+      setDefaultLocation();
+      return;
+    }
+
+    const options = { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 };
+
+    function success(pos) {
+      state.lat = pos.coords.latitude;
+      state.lng = pos.coords.longitude;
+      state.locationSet = true;
+      reverseGeocode(state.lat, state.lng);
+      updateMapMarkers();
+    }
+
+    function error() {
+      setDefaultLocation();
+      const name = document.getElementById('locationName');
+      if (name && name.textContent === 'NYC Case Study') {
+        fetch('https://ipapi.co/json/')
+          .then(r => r.json())
+          .then(data => {
+            if (data.latitude && data.longitude) {
+              state.lat = data.latitude;
+              state.lng = data.longitude;
+              state.locationSet = true;
+              reverseGeocode(state.lat, state.lng);
+              updateMapMarkers();
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    function setDefaultLocation() {
       state.lat = 40.7128;
       state.lng = -74.0060;
       state.locationName = 'NYC Case Study';
       updateLocationUI();
-      return;
     }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        state.lat = pos.coords.latitude;
-        state.lng = pos.coords.longitude;
-        state.locationSet = true;
-        reverseGeocode(state.lat, state.lng);
-        if (mapInstance && userMarker) {
-          userMarker.setLatLng([state.lat, state.lng]);
-          mapInstance.setView([state.lat, state.lng], mapInstance.getZoom());
-        } else if (mapInstance) {
-          userMarker = L.circleMarker([state.lat, state.lng], {
-            radius: 6, color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.8, weight: 2,
-          }).addTo(mapInstance).bindPopup('<b>You are here</b>');
-          mapInstance.setView([state.lat, state.lng], 13);
-        }
-        if (routeMapInstance && userRouteMarker) {
-          userRouteMarker.setLatLng([state.lat, state.lng]);
-        } else if (routeMapInstance) {
-          userRouteMarker = L.marker([state.lat, state.lng]).addTo(routeMapInstance)
-            .bindPopup('<b>Start: Your Location</b>');
-          routeLayers.push(userRouteMarker);
-        }
-      },
-      () => {
-        state.lat = 40.7128;
-        state.lng = -74.0060;
-        state.locationName = 'NYC Case Study';
-        updateLocationUI();
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+
+    function updateMapMarkers() {
+      if (mapInstance && userMarker) {
+        userMarker.setLatLng([state.lat, state.lng]);
+        mapInstance.setView([state.lat, state.lng], mapInstance.getZoom());
+      } else if (mapInstance) {
+        userMarker = L.circleMarker([state.lat, state.lng], {
+          radius: 6, color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.8, weight: 2,
+        }).addTo(mapInstance).bindPopup('<b>You are here</b>');
+        mapInstance.setView([state.lat, state.lng], 13);
+      }
+      if (routeMapInstance && userRouteMarker) {
+        userRouteMarker.setLatLng([state.lat, state.lng]);
+      } else if (routeMapInstance) {
+        userRouteMarker = L.marker([state.lat, state.lng]).addTo(routeMapInstance)
+          .bindPopup('<b>Start: Your Location</b>');
+        routeLayers.push(userRouteMarker);
+      }
+    }
+
+    const watchId = navigator.geolocation.watchPosition(success, error, options);
+
+    setTimeout(() => {
+      if (!state.locationSet) {
+        navigator.geolocation.clearWatch(watchId);
+        navigator.geolocation.getCurrentPosition(success, error, { ...options, timeout: 5000 });
+      }
+    }, 12000);
+
+    setTimeout(() => {
+      if (!state.locationSet) setDefaultLocation();
+    }, 20000);
   }
 
   function initRecording() {
@@ -1082,9 +1119,9 @@
         labels: data.map((d, i) => (i + 1) + 's'),
         datasets: [{
           data: data.map(d => d.noise),
-          borderColor: '#E95420',
-          backgroundColor: 'rgba(233,84,32,0.15)',
-          pointBackgroundColor: '#E95420',
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16,185,129,0.15)',
+          pointBackgroundColor: '#10b981',
           pointRadius: data.length > 1 ? 2 : 0,
           borderWidth: 2,
           fill: true,
@@ -1322,38 +1359,282 @@
     const btn = document.getElementById('legacyToggle');
     if (!btn) return;
     btn.addEventListener('click', () => {
+      const wasLegacy = document.body.classList.contains('legacy');
       document.body.classList.toggle('legacy');
       btn.classList.toggle('active');
       const icon = btn.querySelector('i');
       if (icon) {
-        icon.className = document.body.classList.contains('legacy') ? 'fas fa-palette' : 'fas fa-paint-roller';
+        icon.className = wasLegacy ? 'fas fa-paint-roller' : 'fas fa-palette';
       }
+      btn.querySelector('span').textContent = wasLegacy ? 'Legacy' : 'Caldera';
+
       if (document.body.classList.contains('legacy')) {
-        btn.querySelector('span').textContent = 'Caldera';
+        document.getElementById('logoImage').src = 'BlueNoiseDNA.png';
       } else {
-        btn.querySelector('span').textContent = 'Legacy';
+        document.getElementById('logoImage').src = 'NoiseDNA.png';
       }
       reRenderThemeDependent();
     });
+  }
+
+  const COUNTRIES = [
+    'United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'France', 'Japan',
+    'Brazil', 'India', 'China', 'Mexico', 'Spain', 'Italy', 'Netherlands', 'Sweden',
+    'Norway', 'Denmark', 'Finland', 'South Korea', 'Singapore', 'New Zealand', 'Ireland',
+    'Switzerland', 'Austria', 'Belgium', 'Portugal', 'Greece', 'Poland', 'Turkey',
+    'Argentina', 'Chile', 'Colombia', 'Egypt', 'Nigeria', 'South Africa', 'Morocco',
+    'Saudi Arabia', 'UAE', 'Israel', 'Russia', 'Ukraine', 'Thailand', 'Vietnam',
+    'Philippines', 'Indonesia', 'Malaysia', 'Other',
+  ];
+
+  function initAuth(container) {
+    const overlay = document.createElement('div');
+    overlay.className = 'auth-modal-overlay';
+    overlay.id = 'authOverlay';
+    overlay.innerHTML = `
+      <div class="auth-modal">
+        <h2 id="authTitle">Sign In</h2>
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="authUsername" placeholder="Choose a username" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="authPassword" placeholder="Password" />
+        </div>
+        <div class="form-group" id="authCountryGroup" style="display:none">
+          <label>Country</label>
+          <select id="authCountry">
+            ${COUNTRIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+          </select>
+        </div>
+        <button class="auth-btn" id="authBtn">Sign In</button>
+        <div class="auth-switch">
+          <span id="authSwitchText">Don't have an account? </span>
+          <a id="authSwitchLink">Sign Up</a>
+        </div>
+        <div class="auth-error" id="authError"></div>
+      </div>
+    `;
+    container.appendChild(overlay);
+  }
+
+  function openAuth() {
+    const overlay = document.getElementById('authOverlay');
+    if (!overlay) return;
+    overlay.classList.add('open');
+    document.getElementById('authUsername').value = '';
+    document.getElementById('authPassword').value = '';
+    document.getElementById('authError').textContent = '';
+    setAuthMode('login');
+  }
+
+  function closeAuth() {
+    const overlay = document.getElementById('authOverlay');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+  function setAuthMode(mode) {
+    state.authMode = mode;
+    const title = document.getElementById('authTitle');
+    const btn = document.getElementById('authBtn');
+    const link = document.getElementById('authSwitchLink');
+    const cg = document.getElementById('authCountryGroup');
+    const st = document.getElementById('authSwitchText');
+    if (mode === 'signup') {
+      title.textContent = 'Sign Up';
+      btn.textContent = 'Create Account';
+      link.textContent = 'Sign In';
+      st.textContent = 'Already have an account? ';
+      cg.style.display = 'block';
+    } else {
+      title.textContent = 'Sign In';
+      btn.textContent = 'Sign In';
+      link.textContent = 'Sign Up';
+      st.textContent = 'Don\'t have an account? ';
+      cg.style.display = 'none';
+    }
+  }
+
+  function getUsers() {
+    try { return JSON.parse(localStorage.getItem('noisedna_users') || '{}'); } catch { return {}; }
+  }
+
+  function saveUsers(users) {
+    localStorage.setItem('noisedna_users', JSON.stringify(users));
+  }
+
+  function getCurrentUser() {
+    try { return JSON.parse(localStorage.getItem('noisedna_current_user') || 'null'); } catch { return null; }
+  }
+
+  function saveCurrentUser(user) {
+    if (user) localStorage.setItem('noisedna_current_user', JSON.stringify(user));
+    else localStorage.removeItem('noisedna_current_user');
+  }
+
+  function initAuthHandlers() {
+    const overlay = document.getElementById('authOverlay');
+    if (!overlay) return;
+
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) closeAuth();
+    });
+
+    document.getElementById('authBtn').addEventListener('click', () => {
+      const username = document.getElementById('authUsername').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const err = document.getElementById('authError');
+
+      if (!username || !password) {
+        err.textContent = 'Please fill in all fields';
+        return;
+      }
+
+      if (state.authMode === 'signup') {
+        const country = document.getElementById('authCountry').value;
+        const users = getUsers();
+        if (users[username]) {
+          err.textContent = 'Username already exists';
+          return;
+        }
+        if (password.length < 4) {
+          err.textContent = 'Password must be at least 4 characters';
+          return;
+        }
+        users[username] = { username, password, country };
+        saveUsers(users);
+        const user = { username, country };
+        saveCurrentUser(user);
+        state.currentUser = user;
+        closeAuth();
+        renderUserBadge();
+        renderCommunityPosts();
+      } else {
+        const users = getUsers();
+        const u = users[username];
+        if (!u || u.password !== password) {
+          err.textContent = 'Invalid username or password';
+          return;
+        }
+        const user = { username: u.username, country: u.country };
+        saveCurrentUser(user);
+        state.currentUser = user;
+        closeAuth();
+        renderUserBadge();
+        renderCommunityPosts();
+      }
+    });
+
+    document.getElementById('authSwitchLink').addEventListener('click', () => {
+      setAuthMode(state.authMode === 'signup' ? 'login' : 'signup');
+      document.getElementById('authError').textContent = '';
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeAuth();
+    });
+  }
+
+  function logoutUser() {
+    saveCurrentUser(null);
+    state.currentUser = null;
+    renderUserBadge();
+  }
+
+  function renderUserBadge() {
+    const container = document.getElementById('sidebarUserBadge');
+    if (!container) return;
+    const user = state.currentUser;
+    if (user) {
+      const flag = getCountryFlag(user.country);
+      container.innerHTML = `
+        <div class="user-badge">
+          <span class="user-badge-avatar">${user.username.charAt(0).toUpperCase()}</span>
+          <div class="user-badge-info">
+            <div class="user-badge-name">${user.username}</div>
+            <div class="user-badge-country">${flag} ${user.country}</div>
+          </div>
+          <button class="user-badge-logout" id="logoutBtn" title="Sign Out"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+      `;
+      document.getElementById('logoutBtn')?.addEventListener('click', logoutUser);
+    } else {
+      container.innerHTML = `
+        <button class="auth-signin-btn" id="showAuthBtn">
+          <i class="fas fa-user-plus"></i>
+          <span>Sign In / Register</span>
+        </button>
+      `;
+      document.getElementById('showAuthBtn')?.addEventListener('click', openAuth);
+    }
+  }
+
+  function getCountryFlag(country) {
+    const flags = {
+      'United States': '🇺🇸', 'United Kingdom': '🇬🇧', 'Canada': '🇨🇦', 'Australia': '🇦🇺',
+      'Germany': '🇩🇪', 'France': '🇫🇷', 'Japan': '🇯🇵', 'Brazil': '🇧🇷', 'India': '🇮🇳',
+      'China': '🇨🇳', 'Mexico': '🇲🇽', 'Spain': '🇪🇸', 'Italy': '🇮🇹', 'Netherlands': '🇳🇱',
+      'Sweden': '🇸🇪', 'Norway': '🇳🇴', 'Denmark': '🇩🇰', 'Finland': '🇫🇮', 'South Korea': '🇰🇷',
+      'Singapore': '🇸🇬', 'New Zealand': '🇳🇿', 'Ireland': '🇮🇪', 'Switzerland': '🇨🇭',
+      'Austria': '🇦🇹', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Greece': '🇬🇷', 'Poland': '🇵🇱',
+      'Turkey': '🇹🇷', 'Argentina': '🇦🇷', 'Chile': '🇨🇱', 'Colombia': '🇨🇴', 'Egypt': '🇪🇬',
+      'Nigeria': '🇳🇬', 'South Africa': '🇿🇦', 'Morocco': '🇲🇦', 'Saudi Arabia': '🇸🇦',
+      'UAE': '🇦🇪', 'Israel': '🇮🇱', 'Russia': '🇷🇺', 'Ukraine': '🇺🇦', 'Thailand': '🇹🇭',
+      'Vietnam': '🇻🇳', 'Philippines': '🇵🇭', 'Indonesia': '🇮🇩', 'Malaysia': '🇲🇾',
+    };
+    return flags[country] || '🌍';
   }
 
   function initCommunity() {
     const container = document.getElementById('communityPosts');
     if (!container) return;
 
-    const posts = [
-      { id: 1, user: 'QuietNYC', avatar: 'Q', time: '2h ago', title: 'Best quiet spots in NYC', content: 'I\'ve been mapping the quietest corners of Manhattan. The Roof Garden at the Met and Greenacre Park consistently measure under 50 dB even at noon.', votes: 24, comments: 8 },
-      { id: 2, user: 'BrooklynNoiseWatch', avatar: 'B', time: '5h ago', title: 'Construction noise complaint — Atlantic Ave', content: 'Jackhammering since 6 AM at Atlantic Ave development site. Readings hitting 92 dB near the fence. Past the legal limit of 85 dB.', votes: 42, comments: 15 },
-      { id: 3, user: 'GreenBarrierFan', avatar: 'G', time: '1d ago', title: 'Green barrier success story — Hudson Yards', content: 'Mixed vegetation barrier along the High Line extension has reduced street-level noise by 7 dB! Before: 74 dB, After: 67 dB.', votes: 31, comments: 12 },
-      { id: 4, user: 'WeekendWarrior', avatar: 'W', time: '2d ago', title: 'Weekend noise levels are surprisingly low', content: 'Sunday mornings between 6-9 AM average 48 dB across most residential zones. 15 dB lower than weekday averages.', votes: 18, comments: 6 },
-      { id: 5, user: 'DataNoiseLab', avatar: 'D', time: '3d ago', title: 'Traffic diversion impact on noise — FDR Drive', content: 'After last month\'s FDR Drive lane closure, noise levels along the East River Promenade dropped by 9 dB during peak hours.', votes: 27, comments: 10 },
+    state.currentUser = getCurrentUser();
+    state.communityPosts = [
+      { id: 1, user: 'QuietNYC', avatar: 'Q', country: 'United States', time: '2h ago', title: 'Best quiet spots in NYC', content: 'I\'ve been mapping the quietest corners of Manhattan. The Roof Garden at the Met and Greenacre Park consistently measure under 50 dB even at noon.', votes: 24, comments: 8 },
+      { id: 2, user: 'BrooklynNoiseWatch', avatar: 'B', country: 'United States', time: '5h ago', title: 'Construction noise complaint — Atlantic Ave', content: 'Jackhammering since 6 AM at Atlantic Ave development site. Readings hitting 92 dB near the fence. Past the legal limit of 85 dB.', votes: 42, comments: 15 },
+      { id: 3, user: 'GreenBarrierFan', avatar: 'G', country: 'Canada', time: '1d ago', title: 'Green barrier success story — Hudson Yards', content: 'Mixed vegetation barrier along the High Line extension has reduced street-level noise by 7 dB! Before: 74 dB, After: 67 dB.', votes: 31, comments: 12 },
+      { id: 4, user: 'WeekendWarrior', avatar: 'W', country: 'United Kingdom', time: '2d ago', title: 'Weekend noise levels are surprisingly low', content: 'Sunday mornings between 6-9 AM average 48 dB across most residential zones. 15 dB lower than weekday averages.', votes: 18, comments: 6 },
+      { id: 5, user: 'DataNoiseLab', avatar: 'D', country: 'Germany', time: '3d ago', title: 'Traffic diversion impact on noise — FDR Drive', content: 'After last month\'s FDR Drive lane closure, noise levels along the East River Promenade dropped by 9 dB during peak hours.', votes: 27, comments: 10 },
     ];
 
-    container.innerHTML = posts.map(p => `
-      <div class="card post-card retro-window" data-id="${p.id}">
+    initAuth(document.body);
+    initAuthHandlers();
+    renderUserBadge();
+    renderCommunityPosts();
+
+    container.addEventListener('click', e => {
+      const btn = e.target.closest('.post-vote');
+      if (!btn) return;
+      const post = btn.closest('.post-card');
+      const count = post.querySelector('.vote-count');
+      let val = parseInt(count.textContent);
+      if (btn.classList.contains('post-upvote')) {
+        if (btn.classList.contains('upvoted')) { val--; btn.classList.remove('upvoted'); }
+        else { val++; btn.classList.add('upvoted'); post.querySelector('.post-downvote')?.classList.remove('downvoted'); }
+      } else {
+        if (btn.classList.contains('downvoted')) { val++; btn.classList.remove('downvoted'); }
+        else { val--; btn.classList.add('downvoted'); post.querySelector('.post-upvote')?.classList.remove('upvoted'); }
+      }
+      count.textContent = val;
+    });
+  }
+
+  function renderCommunityPosts() {
+    const container = document.getElementById('communityPosts');
+    if (!container) return;
+    const posts = state.communityPosts || [];
+    const user = state.currentUser;
+    const flag = user ? getCountryFlag(user.country) : '';
+
+    container.innerHTML = posts.map(p => {
+      const pFlag = getCountryFlag(p.country);
+      return `<div class="card post-card retro-window" data-id="${p.id}">
         <div class="post-header">
           <span class="post-avatar" style="background:var(--accent);color:var(--text-on-accent)">${p.avatar}</span>
           <span class="post-user">${p.user}</span>
+          <span class="post-country">${pFlag}</span>
           <span class="post-time">${p.time}</span>
         </div>
         <div class="post-content">
@@ -1365,36 +1646,8 @@
           <button class="post-vote post-downvote"><i class="fas fa-arrow-down"></i></button>
           <span class="post-comments"><i class="fas fa-comment"></i> ${p.comments} comments</span>
         </div>
-      </div>
-    `).join('');
-
-    container.addEventListener('click', e => {
-      const btn = e.target.closest('.post-vote');
-      if (!btn) return;
-      const post = btn.closest('.post-card');
-      const count = post.querySelector('.vote-count');
-      let val = parseInt(count.textContent);
-      if (btn.classList.contains('post-upvote')) {
-        if (btn.classList.contains('upvoted')) {
-          val--;
-          btn.classList.remove('upvoted');
-        } else {
-          val++;
-          btn.classList.add('upvoted');
-          post.querySelector('.post-downvote')?.classList.remove('downvoted');
-        }
-      } else {
-        if (btn.classList.contains('downvoted')) {
-          val++;
-          btn.classList.remove('downvoted');
-        } else {
-          val--;
-          btn.classList.add('downvoted');
-          post.querySelector('.post-upvote')?.classList.remove('upvoted');
-        }
-      }
-      count.textContent = val;
-    });
+      </div>`;
+    }).join('');
   }
 
   function initReports() {
