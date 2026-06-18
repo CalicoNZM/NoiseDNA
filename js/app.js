@@ -2132,9 +2132,11 @@
         state.currentNoise = generateNoiseProfile(state.currentNoise, 2);
         updateDashboardValues();
       }
+      renderSensors();
     }, 5000);
 
     initClippy();
+    initLayoutPresets();
     initCardResizeObserver();
   }
 
@@ -2199,6 +2201,9 @@
       goToSlider(idx);
     }
 
+    if (section === 'dashboard') {
+      renderSensors();
+    }
     if (section === 'map' && mapInstance) {
       setTimeout(() => mapInstance.invalidateSize(), 300);
     }
@@ -3135,13 +3140,49 @@
   }
 
   const COUNTRIES = [
-    'United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'France', 'Japan',
-    'Brazil', 'India', 'China', 'Mexico', 'Spain', 'Italy', 'Netherlands', 'Sweden',
-    'Norway', 'Denmark', 'Finland', 'South Korea', 'Singapore', 'New Zealand', 'Ireland',
-    'Switzerland', 'Austria', 'Belgium', 'Portugal', 'Greece', 'Poland', 'Turkey',
-    'Argentina', 'Chile', 'Colombia', 'Egypt', 'Nigeria', 'South Africa', 'Morocco',
-    'Saudi Arabia', 'UAE', 'Israel', 'Russia', 'Ukraine', 'Thailand', 'Vietnam',
-    'Philippines', 'Indonesia', 'Malaysia', 'Other',
+    'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda',
+    'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
+    'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize',
+    'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil',
+    'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
+    'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Central African Republic', 'Chad',
+    'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica', 'Côte d\'Ivoire',
+    'Croatia', 'Cuba', 'Cyprus', 'Czech Republic (Czechia)',
+    'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'DR Congo',
+    'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia',
+    'Eswatini', 'Ethiopia',
+    'Fiji', 'Finland', 'France',
+    'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala',
+    'Guinea', 'Guinea-Bissau', 'Guyana',
+    'Haiti', 'Honduras', 'Hungary',
+    'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy',
+    'Jamaica', 'Japan', 'Jordan',
+    'Kazakhstan', 'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan',
+    'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein',
+    'Lithuania', 'Luxembourg',
+    'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta',
+    'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova',
+    'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar',
+    'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger',
+    'Nigeria', 'North Korea', 'North Macedonia', 'Norway',
+    'Oman',
+    'Pakistan', 'Palau', 'Palestine', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru',
+    'Philippines', 'Poland', 'Portugal',
+    'Qatar',
+    'Romania', 'Russia', 'Rwanda',
+    'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa',
+    'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia',
+    'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia',
+    'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain',
+    'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria',
+    'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga',
+    'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu',
+    'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States',
+    'Uruguay', 'Uzbekistan',
+    'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam',
+    'Yemen',
+    'Zambia', 'Zimbabwe',
+    'Other',
   ];
 
   function initAuth(container) {
@@ -3335,16 +3376,64 @@
 
   function getCountryFlag(country) {
     const flags = {
-      'United States': '🇺🇸', 'United Kingdom': '🇬🇧', 'Canada': '🇨🇦', 'Australia': '🇦🇺',
-      'Germany': '🇩🇪', 'France': '🇫🇷', 'Japan': '🇯🇵', 'Brazil': '🇧🇷', 'India': '🇮🇳',
-      'China': '🇨🇳', 'Mexico': '🇲🇽', 'Spain': '🇪🇸', 'Italy': '🇮🇹', 'Netherlands': '🇳🇱',
-      'Sweden': '🇸🇪', 'Norway': '🇳🇴', 'Denmark': '🇩🇰', 'Finland': '🇫🇮', 'South Korea': '🇰🇷',
-      'Singapore': '🇸🇬', 'New Zealand': '🇳🇿', 'Ireland': '🇮🇪', 'Switzerland': '🇨🇭',
-      'Austria': '🇦🇹', 'Belgium': '🇧🇪', 'Portugal': '🇵🇹', 'Greece': '🇬🇷', 'Poland': '🇵🇱',
-      'Turkey': '🇹🇷', 'Argentina': '🇦🇷', 'Chile': '🇨🇱', 'Colombia': '🇨🇴', 'Egypt': '🇪🇬',
-      'Nigeria': '🇳🇬', 'South Africa': '🇿🇦', 'Morocco': '🇲🇦', 'Saudi Arabia': '🇸🇦',
-      'UAE': '🇦🇪', 'Israel': '🇮🇱', 'Russia': '🇷🇺', 'Ukraine': '🇺🇦', 'Thailand': '🇹🇭',
-      'Vietnam': '🇻🇳', 'Philippines': '🇵🇭', 'Indonesia': '🇮🇩', 'Malaysia': '🇲🇾',
+      'Afghanistan': '🇦🇫', 'Albania': '🇦🇱', 'Algeria': '🇩🇿', 'Andorra': '🇦🇩',
+      'Angola': '🇦🇴', 'Argentina': '🇦🇷', 'Armenia': '🇦🇲', 'Australia': '🇦🇺',
+      'Austria': '🇦🇹', 'Azerbaijan': '🇦🇿',
+      'Bahamas': '🇧🇸', 'Bahrain': '🇧🇭', 'Bangladesh': '🇧🇩', 'Barbados': '🇧🇧',
+      'Belarus': '🇧🇾', 'Belgium': '🇧🇪', 'Belize': '🇧🇿', 'Benin': '🇧🇯',
+      'Bolivia': '🇧🇴', 'Bosnia and Herzegovina': '🇧🇦', 'Botswana': '🇧🇼',
+      'Brazil': '🇧🇷', 'Brunei': '🇧🇳', 'Bulgaria': '🇧🇬', 'Burkina Faso': '🇧🇫',
+      'Burundi': '🇧🇮',
+      'Cabo Verde': '🇨🇻', 'Cambodia': '🇰🇭', 'Cameroon': '🇨🇲', 'Canada': '🇨🇦',
+      'Chad': '🇹🇩', 'Chile': '🇨🇱', 'China': '🇨🇳', 'Colombia': '🇨🇴', 'Comoros': '🇰🇲',
+      'Congo': '🇨🇬', 'Costa Rica': '🇨🇷', 'Croatia': '🇭🇷', 'Cuba': '🇨🇺', 'Cyprus': '🇨🇾',
+      'Czech Republic (Czechia)': '🇨🇿',
+      'Denmark': '🇩🇰', 'Djibouti': '🇩🇯', 'Dominica': '🇩🇲', 'Dominican Republic': '🇩🇴',
+      'DR Congo': '🇨🇩',
+      'Ecuador': '🇪🇨', 'Egypt': '🇪🇬', 'El Salvador': '🇸🇻', 'Equatorial Guinea': '🇬🇶',
+      'Eritrea': '🇪🇷', 'Estonia': '🇪🇪', 'Eswatini': '🇸🇿', 'Ethiopia': '🇪🇹',
+      'Fiji': '🇫🇯', 'Finland': '🇫🇮', 'France': '🇫🇷',
+      'Gabon': '🇬🇦', 'Gambia': '🇬🇲', 'Georgia': '🇬🇪', 'Germany': '🇩🇪', 'Ghana': '🇬🇭',
+      'Greece': '🇬🇷', 'Grenada': '🇬🇩', 'Guatemala': '🇬🇹', 'Guinea': '🇬🇳',
+      'Guinea-Bissau': '🇬🇼', 'Guyana': '🇬🇾',
+      'Haiti': '🇭🇹', 'Honduras': '🇭🇳', 'Hungary': '🇭🇺',
+      'Iceland': '🇮🇸', 'India': '🇮🇳', 'Indonesia': '🇮🇩', 'Iran': '🇮🇷', 'Iraq': '🇮🇶',
+      'Ireland': '🇮🇪', 'Israel': '🇮🇱', 'Italy': '🇮🇹',
+      'Jamaica': '🇯🇲', 'Japan': '🇯🇵', 'Jordan': '🇯🇴',
+      'Kazakhstan': '🇰🇿', 'Kenya': '🇰🇪', 'Kiribati': '🇰🇮', 'Kuwait': '🇰🇼',
+      'Kyrgyzstan': '🇰🇬',
+      'Laos': '🇱🇦', 'Latvia': '🇱🇻', 'Lebanon': '🇱🇧', 'Lesotho': '🇱🇸', 'Liberia': '🇱🇷',
+      'Libya': '🇱🇾', 'Liechtenstein': '🇱🇮', 'Lithuania': '🇱🇹', 'Luxembourg': '🇱🇺',
+      'Madagascar': '🇲🇬', 'Malawi': '🇲🇼', 'Malaysia': '🇲🇾', 'Maldives': '🇲🇻',
+      'Mali': '🇲🇱', 'Malta': '🇲🇹', 'Marshall Islands': '🇲🇭', 'Mauritania': '🇲🇷',
+      'Mauritius': '🇲🇺', 'Mexico': '🇲🇽', 'Micronesia': '🇫🇲', 'Moldova': '🇲🇩',
+      'Monaco': '🇲🇨', 'Mongolia': '🇲🇳', 'Montenegro': '🇲🇪', 'Morocco': '🇲🇦',
+      'Mozambique': '🇲🇿', 'Myanmar': '🇲🇲',
+      'Namibia': '🇳🇦', 'Nauru': '🇳🇷', 'Nepal': '🇳🇵', 'Netherlands': '🇳🇱',
+      'New Zealand': '🇳🇿', 'Nicaragua': '🇳🇮', 'Niger': '🇳🇪', 'Nigeria': '🇳🇬',
+      'North Korea': '🇰🇵', 'North Macedonia': '🇲🇰', 'Norway': '🇳🇴',
+      'Oman': '🇴🇲',
+      'Pakistan': '🇵🇰', 'Palau': '🇵🇼', 'Palestine': '🇵🇸', 'Panama': '🇵🇦',
+      'Papua New Guinea': '🇵🇬', 'Paraguay': '🇵🇾', 'Peru': '🇵🇪', 'Philippines': '🇵🇭',
+      'Poland': '🇵🇱', 'Portugal': '🇵🇹',
+      'Qatar': '🇶🇦',
+      'Romania': '🇷🇴', 'Russia': '🇷🇺', 'Rwanda': '🇷🇼',
+      'Saint Kitts and Nevis': '🇰🇳', 'Saint Lucia': '🇱🇨',
+      'Saint Vincent and the Grenadines': '🇻🇨', 'Samoa': '🇼🇸', 'San Marino': '🇸🇲',
+      'Sao Tome and Principe': '🇸🇹', 'Saudi Arabia': '🇸🇦', 'Senegal': '🇸🇳',
+      'Serbia': '🇷🇸', 'Seychelles': '🇸🇨', 'Sierra Leone': '🇸🇱', 'Singapore': '🇸🇬',
+      'Slovakia': '🇸🇰', 'Slovenia': '🇸🇮', 'Solomon Islands': '🇸🇧', 'Somalia': '🇸🇴',
+      'South Africa': '🇿🇦', 'South Korea': '🇰🇷', 'South Sudan': '🇸🇸', 'Spain': '🇪🇸',
+      'Sri Lanka': '🇱🇰', 'Sudan': '🇸🇩', 'Suriname': '🇸🇷', 'Sweden': '🇸🇪',
+      'Switzerland': '🇨🇭', 'Syria': '🇸🇾',
+      'Tajikistan': '🇹🇯', 'Tanzania': '🇹🇿', 'Thailand': '🇹🇭', 'Timor-Leste': '🇹🇱',
+      'Togo': '🇹🇬', 'Tonga': '🇹🇴', 'Trinidad and Tobago': '🇹🇹', 'Tunisia': '🇹🇳',
+      'Turkey': '🇹🇷', 'Turkmenistan': '🇹🇲', 'Tuvalu': '🇹🇻',
+      'Uganda': '🇺🇬', 'Ukraine': '🇺🇦', 'United Arab Emirates': '🇦🇪',
+      'United Kingdom': '🇬🇧', 'United States': '🇺🇸', 'Uruguay': '🇺🇾', 'Uzbekistan': '🇺🇿',
+      'Vanuatu': '🇻🇺', 'Vatican City': '🇻🇦', 'Venezuela': '🇻🇪', 'Vietnam': '🇻🇳',
+      'Yemen': '🇾🇪',
+      'Zambia': '🇿🇲', 'Zimbabwe': '🇿🇼',
     };
     return flags[country] || '🌍';
   }
@@ -3426,6 +3515,12 @@
 
     initAuth(document.body);
     initAuthHandlers();
+    createCustomSelect(
+      document.getElementById('authCountry').parentNode,
+      'authCountry',
+      COUNTRIES.map(c => ({ value: c, label: c })),
+      ''
+    );
     renderUserBadge();
     renderCommunityPosts();
 
@@ -3579,6 +3674,92 @@
     } catch(e) {}
   }
 
+  function createCustomSelect(container, selectId, options, selectedValue) {
+    const select = container.querySelector('#' + selectId);
+    if (!select) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'custom-select';
+
+    const trigger = document.createElement('div');
+    trigger.className = 'custom-select-trigger';
+
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'custom-select-value';
+    const initSelected = options.find(o => o.value === selectedValue);
+    const initFlag = initSelected && typeof getCountryFlag === 'function' ? getCountryFlag(initSelected.value) : '';
+    valueSpan.innerHTML = initSelected ? (initFlag + ' ' + initSelected.label) : 'Select...';
+
+    const arrow = document.createElement('span');
+    arrow.className = 'custom-select-arrow';
+    arrow.innerHTML = '<i class="fas fa-chevron-down"></i>';
+
+    trigger.appendChild(valueSpan);
+    trigger.appendChild(arrow);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'custom-select-dropdown';
+
+    const searchDiv = document.createElement('div');
+    searchDiv.className = 'custom-select-search';
+    searchDiv.innerHTML = '<i class="fas fa-search"></i><input type="text" class="custom-select-input" placeholder="Search..." />';
+    dropdown.appendChild(searchDiv);
+
+    const optionsDiv = document.createElement('div');
+    optionsDiv.className = 'custom-select-options';
+    dropdown.appendChild(optionsDiv);
+
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(dropdown);
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    select.style.display = 'none';
+
+    function renderOptions(filter) {
+      const q = (filter || '').toLowerCase();
+      optionsDiv.innerHTML = '';
+      const filtered = q ? options.filter(o => o.label.toLowerCase().includes(q)) : options;
+      filtered.forEach(o => {
+        const el = document.createElement('div');
+        el.className = 'custom-select-option' + (o.value === select.value ? ' selected' : '');
+        const flag = typeof getCountryFlag === 'function' ? getCountryFlag(o.value) : '';
+        el.innerHTML = flag + ' ' + o.label;
+        el.dataset.value = o.value;
+        el.addEventListener('click', () => {
+          select.value = o.value;
+          valueSpan.innerHTML = flag + ' ' + o.label;
+          wrapper.classList.remove('open');
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          renderOptions('');
+        });
+        optionsDiv.appendChild(el);
+      });
+    }
+
+    const searchInput = searchDiv.querySelector('input');
+    searchInput.addEventListener('input', () => renderOptions(searchInput.value));
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      wrapper.classList.toggle('open');
+      if (wrapper.classList.contains('open')) {
+        searchInput.value = '';
+        renderOptions('');
+        searchInput.focus();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!wrapper.contains(e.target)) {
+        wrapper.classList.remove('open');
+      }
+    });
+
+    renderOptions('');
+
+    return wrapper;
+  }
+
   function initReports() {
     const form = document.getElementById('reportForm');
     const list = document.getElementById('reportsList');
@@ -3587,10 +3768,11 @@
 
     const countryGroup = document.createElement('div');
     countryGroup.className = 'form-group';
+    const selectedCountry = state.currentUser ? state.currentUser.country : '';
     countryGroup.innerHTML = `
       <label for="reportCountry">Country</label>
       <select class="form-select" id="reportCountry">
-        ${COUNTRIES.map(c => `<option value="${c}" ${state.currentUser && state.currentUser.country === c ? 'selected' : ''}>${c}</option>`).join('')}
+        ${COUNTRIES.map(c => `<option value="${c}" ${selectedCountry === c ? 'selected' : ''}>${c}</option>`).join('')}
       </select>
     `;
 
@@ -3606,6 +3788,13 @@
     locationGroup.parentNode.insertBefore(cityGroup, locationGroup);
 
     document.getElementById('reportLocation').placeholder = 'e.g. Central Station';
+
+    createCustomSelect(
+      document.getElementById('reportCountry').parentNode,
+      'reportCountry',
+      COUNTRIES.map(c => ({ value: c, label: c })),
+      selectedCountry
+    );
 
     form.addEventListener('submit', e => {
       e.preventDefault();
@@ -3844,6 +4033,25 @@
       tipIndex = (tipIndex + 1) % tips.length;
       message.innerHTML = tips[tipIndex];
       btn.innerHTML = '<i class="fas fa-lightbulb"></i> Next Tip';
+    });
+  }
+
+  function initLayoutPresets() {
+    const buttons = document.querySelectorAll('.layout-btn');
+    if (!buttons.length) return;
+    const grid = document.querySelector('.dashboard-grid');
+    if (grid) grid.classList.add('layout-default');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (!grid) return;
+        const layout = btn.dataset.layout;
+        ['layout-default', 'layout-compact', 'layout-detailed', 'layout-map'].forEach(cls => {
+          grid.classList.remove(cls);
+        });
+        grid.classList.add('layout-' + layout);
+      });
     });
   }
 
