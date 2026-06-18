@@ -320,6 +320,24 @@
                         </div>
                         <div class="sensors-list" id="sensorsList"></div>
                     </div>
+
+                    <div class="card card-full clippy-card">
+                        <div class="card-header">
+                            <span>Clippy Assistant</span>
+                            <span class="badge"><i class="fas fa-robot"></i> AI Help</span>
+                        </div>
+                        <div class="clippy-body">
+                            <div class="clippy-avatar">
+                                <img src="Clippy2.png" alt="Clippy" class="clippy-img" />
+                            </div>
+                            <div class="clippy-message" id="clippyMessage">
+                                Hi! I'm <strong>Clippy</strong> — your NoiseDNA assistant. Click the tips below to learn more!
+                            </div>
+                            <button class="clippy-tip-btn" id="clippyTipBtn">
+                                <i class="fas fa-lightbulb"></i> Next Tip
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -513,17 +531,7 @@
                         <div class="input-icon">
                             <i class="fas fa-location-dot" style="color: #ef4444"></i>
                         </div>
-                        <select class="route-input route-select" id="routeEnd">
-                            <option value="">Choose destination...</option>
-                            <option value="Central Park">Central Park</option>
-                            <option value="Times Square, NYC">Times Square</option>
-                            <option value="Brooklyn Bridge">Brooklyn Bridge</option>
-                            <option value="Grand Central Terminal">Grand Central</option>
-                            <option value="Union Square">Union Square</option>
-                            <option value="Wall Street">Wall Street</option>
-                            <option value="Madison Square Garden">Madison Square Garden</option>
-                            <option value="One World Trade Center">One World Trade Center</option>
-                        </select>
+                        <input class="route-input" id="routeEnd" type="text" placeholder="Type a destination..." value="Central Park" />
                     </div>
                     <button class="route-find-btn" id="routeFindBtn">
                         <i class="fas fa-magnifying-glass"></i> Find Routes
@@ -815,6 +823,64 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="card zone-card park">
+                        <div class="zone-header">
+                            <i class="fas fa-tree"></i>
+                            <span>Local Parks</span>
+                        </div>
+                        <div class="zone-body">
+                            <div class="zone-stat">
+                                <span>Current</span>
+                                <span class="z-val zone-quiet">35 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Predicted Peak</span>
+                                <span class="z-val zone-moderate">58 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Risk Level</span>
+                                <span class="z-badge low">Low</span>
+                            </div>
+                            <div class="zone-actions">
+                                <strong>Recommended Actions:</strong>
+                                <ul>
+                                    <li><i class="fas fa-tree"></i> Expand green buffer zones</li>
+                                    <li><i class="fas fa-volume-xmark"></i> Install noise warning signs</li>
+                                    <li><i class="fas fa-clock"></i> Enforce quiet hours after 9 PM</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card zone-card daycare">
+                        <div class="zone-header">
+                            <i class="fas fa-child"></i>
+                            <span>Daycare Centers</span>
+                        </div>
+                        <div class="zone-body">
+                            <div class="zone-stat">
+                                <span>Current</span>
+                                <span class="z-val zone-moderate">50 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Predicted Peak</span>
+                                <span class="z-val zone-loud">68 dB</span>
+                            </div>
+                            <div class="zone-stat">
+                                <span>Risk Level</span>
+                                <span class="z-badge moderate">Moderate</span>
+                            </div>
+                            <div class="zone-actions">
+                                <strong>Recommended Actions:</strong>
+                                <ul>
+                                    <li><i class="fas fa-tree"></i> Soundproof playground areas</li>
+                                    <li><i class="fas fa-ban"></i> No construction 12 PM – 3 PM</li>
+                                    <li><i class="fas fa-road"></i> Create no-honking zones</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -904,17 +970,5 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
         <script src="js/api.js"></script>
         <script src="js/app.js"></script>
-
-        <div class="clippy-assistant" id="clippyAssistant">
-            <div class="clippy-bubble" id="clippyBubble">
-                <div class="clippy-bubble-content" id="clippyContent">
-                    Hi! I'm <strong>Clippy</strong> 👋<br>Need help navigating NoiseDNA?
-                </div>
-                <div class="clippy-bubble-arrow"></div>
-            </div>
-            <button class="clippy-btn" id="clippyBtn" title="Clippy Assistant">
-                <i class="fas fa-paperclip"></i>
-            </button>
-        </div>
     </body>
 </html>

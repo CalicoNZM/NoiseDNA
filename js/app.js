@@ -1924,7 +1924,7 @@
 
     const startVal = document.getElementById('routeStart').value;
     const endVal = document.getElementById('routeEnd').value;
-    if (!endVal) { alert('Please select a destination'); return; }
+    if (!endVal) { alert('Please enter a destination'); return; }
 
     const cs = state.caseStudy || CASE_STUDIES['United States'];
     const presets = cs.landmarks || {};
@@ -1937,11 +1937,15 @@
     }
     if (!startLat || !startLng) { startLat = cs.lat; startLng = cs.lng; }
 
-    const endCoords = presets[endVal];
-    if (!endCoords) { alert('Unknown destination'); return; }
+    let endCoords = presets[endVal];
+    if (!endCoords) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 0.005 + Math.random() * 0.015;
+      endCoords = [startLat + Math.cos(angle) * dist, startLng + Math.sin(angle) * dist];
+    }
 
     const startName = startVal === 'current' ? (state.locationName || 'Current Location') : startVal;
-    const endName = endVal;
+    const endName = endVal === state.locationName ? endVal : endVal;
     const startM = L.marker([startLat, startLng]).addTo(routeMapInstance)
       .bindPopup('<b>' + startName + '</b><br>Start');
     const endM = L.marker(endCoords).addTo(routeMapInstance)
@@ -2384,8 +2388,10 @@
       state.lat = pos.coords.latitude;
       state.lng = pos.coords.longitude;
       state.locationSet = true;
+      state.hourlyData = generateHourlyData(state.baseNoise);
       reverseGeocode(state.lat, state.lng);
       updateMapMarkers();
+      renderForecast();
     }
 
     function error() {
@@ -2398,8 +2404,10 @@
               state.lat = data.latitude;
               state.lng = data.longitude;
               state.locationSet = true;
+              state.hourlyData = generateHourlyData(state.baseNoise);
               reverseGeocode(state.lat, state.lng);
               updateMapMarkers();
+              renderForecast();
             }
           })
           .catch(() => {});
@@ -3664,7 +3672,45 @@
     { id: 'library-2', name: 'Brooklyn Public Library', type: 'library', lat: 40.672, lng: -73.968, baseNoise: 45 },
   ];
 
+  function generateLocalProtectiveZones() {
+    const lat = state.lat || 40.7128;
+    const lng = state.lng || -74.0060;
+    const zones = [];
+
+    const types = [
+      { id: 'school', name: 'Elementary School', icon: 'fa-school', baseNoise: 52 },
+      { id: 'hospital', name: 'Community Clinic', icon: 'fa-hospital', baseNoise: 48 },
+      { id: 'library', name: 'Public Library', icon: 'fa-book', baseNoise: 40 },
+      { id: 'park', name: 'Neighborhood Park', icon: 'fa-tree', baseNoise: 38 },
+      { id: 'daycare', name: 'Childcare Center', icon: 'fa-child', baseNoise: 50 },
+      { id: 'school', name: 'High School', icon: 'fa-school', baseNoise: 55 },
+      { id: 'hospital', name: 'Urgent Care', icon: 'fa-hospital', baseNoise: 50 },
+      { id: 'library', name: 'Community Reading Room', icon: 'fa-book', baseNoise: 38 },
+      { id: 'park', name: 'Botanical Garden', icon: 'fa-tree', baseNoise: 35 },
+      { id: 'daycare', name: 'Preschool', icon: 'fa-child', baseNoise: 48 },
+    ];
+
+    types.forEach((t, i) => {
+      const angle = (i / types.length) * Math.PI * 2 + Math.random() * 0.3;
+      const dist = 0.003 + Math.random() * 0.012;
+      zones.push({
+        id: t.id + '-' + (i + 1),
+        name: t.name,
+        type: t.id,
+        lat: lat + Math.cos(angle) * dist,
+        lng: lng + Math.sin(angle) * dist,
+        baseNoise: t.baseNoise,
+      });
+    });
+
+    return zones;
+  }
+
   function initSensitiveZoneMonitor() {
+    const localZones = generateLocalProtectiveZones();
+    const cs = state.caseStudy || CASE_STUDIES['United States'];
+    const existing = cs.sensitiveZones || [];
+    currentSensitiveZones = [...existing, ...localZones];
     renderSensitiveZones();
     setInterval(renderSensitiveZones, 30000);
   }
@@ -3684,7 +3730,12 @@
       school: { cards: ['PS 321 School', 'Columbia University'], name: 'NYC Public Schools', icon: 'fa-school', color: '#06B6D4' },
       hospital: { cards: ['NYU Langone Hospital', 'Mount Sinai Hospital'], name: 'NYC Hospitals', icon: 'fa-hospital', color: '#EF4444' },
       library: { cards: ['NY Public Library', 'Brooklyn Public Library'], name: 'NYPL Branches', icon: 'fa-book', color: '#F59E0B' },
+      park: { cards: ['Local Park', 'Community Garden'], name: 'Local Parks', icon: 'fa-tree', color: '#10B981' },
+      daycare: { cards: ['Sunshine Daycare', 'Little Stars Preschool'], name: 'Daycare Centers', icon: 'fa-child', color: '#F59E0B' },
     };
+
+    const locName = state.locationName || cs.name;
+    const cityShort = locName.split(' ')[0] || 'Local';
 
     Object.keys(typeMap).forEach(type => {
       const t = typeMap[type];
@@ -3699,6 +3750,9 @@
 
       const zoneCard = document.querySelector(`.zone-card.${type}`);
       if (!zoneCard) return;
+      const headerSpan = zoneCard.querySelector('.zone-header span');
+      if (headerSpan) headerSpan.textContent = cityShort + ' ' + t.name;
+
       const valEl = zoneCard.querySelector('.z-val');
       if (valEl) {
         valEl.textContent = noise + ' dB';
@@ -3762,46 +3816,34 @@
   }
 
   function initClippy() {
-    const btn = document.getElementById('clippyBtn');
-    const bubble = document.getElementById('clippyBubble');
-    const content = document.getElementById('clippyContent');
-    if (!btn || !bubble || !content) return;
+    const message = document.getElementById('clippyMessage');
+    const btn = document.getElementById('clippyTipBtn');
+    if (!message || !btn) return;
 
     const tips = [
-      'Welcome to NoiseDNA! I\'m Clippy, your assistant 🤖',
+      'Welcome to NoiseDNA! I\'m <strong>Clippy</strong>, your assistant 🤖',
       'The dashboard shows real-time noise at <strong>your location</strong>',
-      'Auto-record captures 15s of noise, then pauses 5s — on loop',
+      'Auto-record captures 15s of noise, then pauses 5s — on loop!',
       'Nearby sensors show noise readings from devices around you',
       'Use the Live Map to see noise hotspots in your area',
       'The Forecast tab predicts noise trends for the day ahead',
-      'Quiet Routes finds the best path to avoid loud areas',
+      'Quiet Routes lets you type <strong>any</strong> destination to find quiet paths',
       'Building Advisor helps design noise-resilient buildings',
-      'Sensitive Zones track noise at schools, hospitals & libraries',
+      'Sensitive Zones track noise at schools, hospitals & parks near you',
       'Share your noise data in the Community tab!',
       'Reports let you submit noise observations with country data',
       'Dark Mode reduces eye strain — toggle it in the sidebar',
-      'Your location is used for all noise estimates & case studies',
+      'Your location powers all noise estimates — everything is local 🌍',
     ];
 
     let tipIndex = 0;
-    let isOpen = false;
+
+    message.innerHTML = tips[0];
 
     btn.addEventListener('click', () => {
-      isOpen = !isOpen;
-      if (isOpen) {
-        tipIndex = (tipIndex + 1) % tips.length;
-        content.innerHTML = tips[tipIndex];
-        bubble.classList.add('show');
-      } else {
-        bubble.classList.remove('show');
-      }
-    });
-
-    document.addEventListener('click', (e) => {
-      if (isOpen && !btn.contains(e.target) && !bubble.contains(e.target)) {
-        isOpen = false;
-        bubble.classList.remove('show');
-      }
+      tipIndex = (tipIndex + 1) % tips.length;
+      message.innerHTML = tips[tipIndex];
+      btn.innerHTML = '<i class="fas fa-lightbulb"></i> Next Tip';
     });
   }
 
