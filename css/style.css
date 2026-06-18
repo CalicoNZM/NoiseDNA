@@ -1902,3 +1902,159 @@ textarea.form-input {
   color: var(--text-muted);
   margin-left: 4px;
 }
+
+.sidebar-team {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color, rgba(16,185,129,0.2));
+  text-align: center;
+}
+
+.team-name {
+  display: block;
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.55rem;
+  color: var(--accent, #10b981);
+  letter-spacing: 2px;
+}
+
+.team-members {
+  display: block;
+  font-size: 0.4rem;
+  color: var(--text-muted, #6A8A7A);
+  margin-top: 2px;
+}
+
+.clippy-assistant {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.clippy-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--accent, #10b981);
+  background: var(--bg-elevated, #fff);
+  color: var(--accent, #10b981);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-window, 4px 4px 0px rgba(16,185,129,0.2));
+  transition: all var(--transition, 0.15s ease);
+}
+
+.clippy-btn:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-window-hover, 6px 6px 0px rgba(16,185,129,0.3));
+}
+
+.clippy-bubble {
+  background: var(--bg-elevated, #fff);
+  border: 2px solid var(--accent, #10b981);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  max-width: 260px;
+  font-size: 0.75rem;
+  color: var(--text-primary, #1d1d1f);
+  box-shadow: var(--shadow-window, 4px 4px 0px rgba(16,185,129,0.2));
+  position: relative;
+  display: none;
+}
+
+.clippy-bubble.show {
+  display: block;
+  animation: clippyFadeIn 0.3s ease;
+}
+
+@keyframes clippyFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.clippy-bubble-arrow {
+  position: absolute;
+  bottom: -8px;
+  right: 18px;
+  width: 12px;
+  height: 12px;
+  background: var(--bg-elevated, #fff);
+  border-right: 2px solid var(--accent, #10b981);
+  border-bottom: 2px solid var(--accent, #10b981);
+  transform: rotate(45deg);
+}
+
+.clippy-bubble-content {
+  line-height: 1.5;
+}
+
+.clippy-bubble-close {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  cursor: pointer;
+  color: var(--text-muted, #6A8A7A);
+  font-size: 0.6rem;
+}
+
+.sensors-card .sensors-list {
+  padding: 8px 0;
+}
+
+.sensor-header {
+  font-size: 0.6rem;
+  color: var(--text-muted, #6A8A7A);
+  padding: 0 12px 8px;
+  border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.06));
+  margin-bottom: 4px;
+}
+
+.sensor-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 10px;
+  transition: background var(--transition, 0.15s ease);
+}
+
+.sensor-item:hover {
+  background: var(--bg-card-hover, rgba(0,0,0,0.02));
+}
+
+.sensor-icon {
+  width: 28px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.sensor-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sensor-name {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-primary, #1d1d1f);
+}
+
+.sensor-loc {
+  display: block;
+  font-size: 0.55rem;
+  color: var(--text-muted, #6A8A7A);
+}
+
+.sensor-reading {
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}

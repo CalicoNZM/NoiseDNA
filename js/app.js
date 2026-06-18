@@ -1445,7 +1445,66 @@
         library: { cards: ['King Fahad National Library', 'Riyadh Public Library'], name: 'Riyadh Libraries', icon: 'fa-book', color: '#F59E0B' },
       },
     },
-
+    'Morocco': {
+      name: 'Casablanca Case Study',
+      lat: 33.5731,
+      lng: -7.5898,
+      baseNoise: 63,
+      population: 3700000,
+      landmarks: {
+        'Hassan II Mosque': [33.6088, -7.6329],
+        'Old Medina': [33.5720, -7.6200],
+        'Corniche': [33.5940, -7.6490],
+        'Place Mohammed V': [33.5750, -7.6030],
+        'Ain Diab': [33.5850, -7.6550],
+        'Morocco Mall': [33.5900, -7.6500],
+        'Central Market': [33.5710, -7.6100],
+        'Sqala Garden': [33.5670, -7.6170],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'Hassan II University', type: 'school', lat: 33.5000, lng: -7.6300, baseNoise: 56 },
+        { id: 'hospital-1', name: 'CHU Ibn Rochd', type: 'hospital', lat: 33.5800, lng: -7.6200, baseNoise: 54 },
+        { id: 'library-1', name: 'Bibliotheque Nationale', type: 'library', lat: 33.5700, lng: -7.6050, baseNoise: 43 },
+        { id: 'school-2', name: 'Universite Internationale', type: 'school', lat: 33.5200, lng: -7.6600, baseNoise: 54 },
+        { id: 'hospital-2', name: 'Clinique Agdal', type: 'hospital', lat: 33.5650, lng: -7.6150, baseNoise: 52 },
+        { id: 'library-2', name: 'Casablanca Public Library', type: 'library', lat: 33.5750, lng: -7.6080, baseNoise: 41 },
+      ],
+      zoneGroups: {
+        school: { cards: ['Hassan II University', 'Universite Internationale'], name: 'Casablanca Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['CHU Ibn Rochd', 'Clinique Agdal'], name: 'Casablanca Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['Bibliotheque Nationale', 'Casablanca Public Library'], name: 'Casablanca Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    'Ukraine': {
+      name: 'Kyiv Case Study',
+      lat: 50.4501,
+      lng: 30.5234,
+      baseNoise: 60,
+      population: 2900000,
+      landmarks: {
+        'Kyiv Pechersk Lavra': [50.4349, 30.5583],
+        'Saint Sophia Cathedral': [50.4547, 30.5138],
+        'Maidan Nezalezhnosti': [50.4501, 30.5237],
+        'Khreshchatyk Street': [50.4470, 30.5190],
+        'Golden Gate': [50.4487, 30.5131],
+        'Andriyivskyi Descent': [50.4620, 30.5140],
+        'Mariinskyi Palace': [50.4470, 30.5410],
+        'Kyiv Zoo': [50.4550, 30.4650],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'Taras Shevchenko University', type: 'school', lat: 50.4430, lng: 30.5050, baseNoise: 54 },
+        { id: 'hospital-1', name: 'Kyiv City Hospital', type: 'hospital', lat: 50.4520, lng: 30.4900, baseNoise: 51 },
+        { id: 'library-1', name: 'Vernadsky National Library', type: 'library', lat: 50.3750, lng: 30.4800, baseNoise: 42 },
+        { id: 'school-2', name: 'Kyiv Polytechnic Institute', type: 'school', lat: 50.4490, lng: 30.4560, baseNoise: 52 },
+        { id: 'hospital-2', name: 'Feofaniya Hospital', type: 'hospital', lat: 50.4000, lng: 30.5000, baseNoise: 49 },
+        { id: 'library-2', name: 'Kyiv Public Library', type: 'library', lat: 50.4500, lng: 30.5200, baseNoise: 40 },
+      ],
+      zoneGroups: {
+        school: { cards: ['Taras Shevchenko University', 'Kyiv Polytechnic Institute'], name: 'Kyiv Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['Kyiv City Hospital', 'Feofaniya Hospital'], name: 'Kyiv Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['Vernadsky National Library', 'Kyiv Public Library'], name: 'Kyiv Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
   };
 
   function getCaseStudy(country) {
@@ -1833,7 +1892,7 @@
   };
 
   let gaugeCanvas, gaugeValue;
-  let sourceChartInstance, hourlyChartInstance, forecastChartInstance;
+  let hourlyChartInstance, forecastChartInstance;
   let mapInstance;
   let updateInterval;
   let userMarker, userRouteMarker;
@@ -2071,6 +2130,7 @@
       }
     }, 5000);
 
+    initClippy();
     initCardResizeObserver();
   }
 
@@ -2153,7 +2213,6 @@
 
   function reRenderThemeDependent() {
     setTimeout(() => {
-      if (document.getElementById('sourceChart')) renderSourceChart();
       if (document.getElementById('hourlyChart')) renderTrendChart();
       if (document.getElementById('forecastChart')) renderForecastChart();
       if (document.getElementById('noiseGauge')) drawGauge(document.getElementById('noiseGauge'), state.currentNoise);
@@ -2255,9 +2314,6 @@
         const card = entry.target;
         if (!document.contains(card)) return;
 
-        if (card.contains(document.getElementById('sourceChart'))) {
-          if (sourceChartInstance) { sourceChartInstance.resize(); }
-        }
         if (card.contains(document.getElementById('hourlyChart'))) {
           if (hourlyChartInstance) { hourlyChartInstance.resize(); }
         }
@@ -2390,23 +2446,15 @@
   }
 
   function initRecording() {
-    const btn = document.getElementById('recordBtn');
-    if (!btn) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setLabel('Mic not available');
       return;
     }
-    btn.addEventListener('click', function toggleRecord() {
-      if (btn.dataset.recording === 'true') {
-        stopRecording();
-      } else {
-        startRecording();
-      }
-    });
+    setTimeout(startRecording, 1000);
   }
 
   function startRecording() {
-    const btn = document.getElementById('recordBtn');
+    if (state.recordingStopping) return;
     navigator.mediaDevices.getUserMedia({ audio: true })
       .then(stream => {
         state.micStream = stream;
@@ -2419,16 +2467,18 @@
         state.recordingPhase = 'recording';
         state.micSamples = [];
         state.trendData = [];
-        state.sourceData = [];
         state.recordingStartTime = Date.now();
         state.recordingSecond = 0;
         state.recordingStopping = false;
         state.lastAvg = 0;
 
-        btn.dataset.recording = 'true';
-        btn.classList.add('recording');
-        btn.classList.remove('stopping');
-        btn.querySelector('i').className = 'fas fa-stop';
+        const btn = document.getElementById('recordBtn');
+        if (btn) {
+          btn.dataset.recording = 'true';
+          btn.classList.add('recording');
+          btn.classList.remove('stopping');
+          btn.querySelector('i').className = 'fas fa-stop';
+        }
         setLabel('Recording 0/15s');
 
         const timerEl = getOrCreateTimer();
@@ -2451,14 +2501,9 @@
           state.trendData.push({ time: (state.trendData.length + 1) + 'f', noise: db });
           if (state.trendData.length > 250) state.trendData = state.trendData.slice(-250);
 
-          gaugeValue.textContent = db;
+          if (gaugeValue) gaugeValue.textContent = db;
           updateQuickStats(db);
           drawGauge(gaugeCanvas, db);
-
-          if (state.lastFreqData) {
-            state.sourceData = generateSourceFromFreq(state.lastFreqData);
-            renderSourceChart();
-          }
 
           const elapsed = Math.floor((Date.now() - state.recordingStartTime) / 1000);
           if (elapsed > state.recordingSecond) {
@@ -2481,8 +2526,8 @@
         });
       })
       .catch(() => {
-        setLabel('Mic denied');
-        btn.dataset.recording = 'false';
+        setLabel('Mic denied — using simulation');
+        startSimulatedRecording();
       });
   }
 
@@ -2490,11 +2535,12 @@
     if (state.recordingStopping) return;
     state.recordingStopping = true;
     const btn = document.getElementById('recordBtn');
-    btn.classList.remove('recording');
-    btn.classList.add('stopping');
-    btn.querySelector('i').className = 'fas fa-hourglass-half';
-    const sec = Math.min(state.recordingSecond || 0, 15);
-    setLabel('Finishing... ' + sec + '/15s');
+    if (btn) {
+      btn.classList.remove('recording');
+      btn.classList.add('stopping');
+      btn.querySelector('i').className = 'fas fa-hourglass-half';
+    }
+    setLabel('Finishing...');
   }
 
   function finalizeRecording() {
@@ -2520,24 +2566,91 @@
       ? Math.round(collected.reduce((a, b) => a + b, 0) / collected.length)
       : state.currentNoise;
 
-    setLabel('Avg: ' + finalAvg + ' dB');
-    const timerEl = document.querySelector('.record-timer');
-    if (timerEl) timerEl.textContent = 'Final: ' + finalAvg + ' dB avg';
-
-    btn.dataset.recording = 'false';
-    btn.classList.remove('recording', 'stopping');
-    btn.querySelector('i').className = 'fas fa-microphone';
-
     state.currentNoise = finalAvg;
-    state.sourceData = state.lastFreqData ? generateSourceFromFreq(state.lastFreqData) : generateSourceDistribution(state.baseNoise);
     state.trendData = state.trendData.slice(-250);
 
     gaugeValue.textContent = finalAvg;
     drawGauge(gaugeCanvas, finalAvg);
     updateQuickStats(finalAvg);
-    renderSourceChart();
     renderTrendChart();
-    renderAlerts(finalAvg);
+    renderSensors();
+
+    setLabel('Avg: ' + finalAvg + ' dB — pause 5s');
+    const timerEl = document.querySelector('.record-timer');
+    if (timerEl) timerEl.textContent = 'Pause: 5s';
+
+    if (btn) {
+      btn.dataset.recording = 'false';
+      btn.classList.remove('recording', 'stopping');
+      btn.querySelector('i').className = 'fas fa-microphone';
+    }
+
+    let pauseCount = 5;
+    const pauseTimer = document.querySelector('.record-timer');
+    const pauseInterval = setInterval(() => {
+      pauseCount--;
+      if (pauseTimer) pauseTimer.textContent = 'Pause: ' + pauseCount + 's';
+      setLabel('Pause ' + pauseCount + '/5s');
+      if (pauseCount <= 0) {
+        clearInterval(pauseInterval);
+        startRecording();
+      }
+    }, 1000);
+  }
+
+  function startSimulatedRecording() {
+    state.recordingPhase = 'recording';
+    state.micSamples = [];
+    state.trendData = [];
+    state.recordingStartTime = Date.now();
+    state.recordingSecond = 0;
+    state.recordingStopping = false;
+    state.lastAvg = 0;
+    state.usingMic = false;
+
+    setLabel('Recording 0/15s');
+    const timerEl = getOrCreateTimer();
+    timerEl.textContent = '0s / 15s';
+
+    const btn = document.getElementById('recordBtn');
+    if (btn) {
+      btn.dataset.recording = 'true';
+      btn.classList.add('recording');
+    }
+
+    const cs = state.caseStudy || CASE_STUDIES['United States'];
+    const base = cs.baseNoise || 67;
+
+    state.micAnimFrame = requestAnimationFrame(function simSample() {
+      if (state.recordingStopping) {
+        finalizeRecording();
+        return;
+      }
+      const db = clamp(Math.round(base + rand(-10, 10)), 20, 140);
+      state.currentNoise = db;
+      state.micSamples.push(db);
+
+      state.trendData.push({ time: (state.trendData.length + 1) + 'f', noise: db });
+      if (state.trendData.length > 250) state.trendData = state.trendData.slice(-250);
+
+      if (gaugeValue) gaugeValue.textContent = db;
+      updateQuickStats(db);
+      drawGauge(gaugeCanvas, db);
+
+      const elapsed = Math.floor((Date.now() - state.recordingStartTime) / 1000);
+      if (elapsed > state.recordingSecond) {
+        state.recordingSecond = elapsed;
+        const sec = Math.min(elapsed, 15);
+        setLabel('Recording ' + sec + '/15s');
+        timerEl.textContent = sec + 's / 15s';
+        if (sec >= 15) {
+          finalizeRecording();
+          return;
+        }
+      }
+
+      state.micAnimFrame = requestAnimationFrame(simSample);
+    });
   }
 
   function setLabel(text) {
@@ -2662,23 +2775,6 @@
     }
   }
 
-  function renderAlerts(db) {
-    const list = document.getElementById('alertsList');
-    if (!list) return;
-    const alerts = [];
-    if (db > 70) alerts.push({ type: 'danger', icon: 'fa-bullhorn', loc: 'Your Area', desc: 'High noise: ' + db + ' dB', time: 'now' });
-    if (db > 60) alerts.push({ type: 'warning', icon: 'fa-road', loc: 'Nearby Street', desc: 'Traffic noise elevated', time: '1m ago' });
-    alerts.push({ type: 'info', icon: 'fa-microchip', loc: 'Mic Sensor', desc: 'Real-time monitoring active', time: 'now' });
-    if (db > 50 && db <= 60) alerts.push({ type: 'success', icon: 'fa-check-circle', loc: 'Your Area', desc: 'Noise within safe range: ' + db + ' dB', time: 'now' });
-    list.innerHTML = alerts.map(a =>
-      '<div class="alert-item ' + a.type + '">' +
-        '<div class="alert-icon"><i class="fas ' + a.icon + '"></i></div>' +
-        '<div class="alert-info"><span class="alert-location">' + a.loc + '</span><span class="alert-desc">' + a.desc + '</span></div>' +
-        '<span class="alert-time">' + a.time + '</span>' +
-      '</div>'
-    ).join('');
-  }
-
   function initRouteSwap() {
     document.getElementById('routeSwap').addEventListener('click', () => {
       const s = document.getElementById('routeStart');
@@ -2707,8 +2803,8 @@
   function renderDashboard() {
     drawGauge(gaugeCanvas, state.currentNoise);
     updateDashboardValues();
-    renderSourceChart();
     renderTrendChart();
+    renderSensors();
   }
 
   function updateDashboardValues() {
@@ -2751,47 +2847,6 @@
     if (allStatLabels.length >= 8) {
       allStatLabels[6].textContent = 'Trees Planted';
       allStatLabels[7].textContent = 'People Protected';
-    }
-  }
-
-  function renderSourceChart() {
-    const ctx = document.getElementById('sourceChart')?.getContext('2d');
-    if (!ctx) return;
-    if (sourceChartInstance) sourceChartInstance.destroy();
-
-    const data = state.sourceData && state.sourceData.length > 0 ? state.sourceData : generateSourceDistribution(state.baseNoise);
-    state.sourceData = data;
-
-    sourceChartInstance = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: data.map(d => d.label),
-        datasets: [{
-          data: data.map(d => d.value),
-          backgroundColor: data.map(d => d.color + 'DD'),
-          borderColor: data.map(d => d.color),
-          borderWidth: 2,
-        }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '62%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            ...chartTooltip(),
-            callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed}%` },
-          },
-        },
-      },
-    });
-
-    const legendEl = document.getElementById('sourceLegend');
-    if (legendEl) {
-      legendEl.innerHTML = data.map(d =>
-        `<span><span class="legend-color" style="background:${d.color}"></span> ${d.label} ${d.pct}%</span>`
-      ).join('');
     }
   }
 
@@ -3653,6 +3708,99 @@
       if (badge) {
         badge.textContent = riskLabels[risk.id] || 'Moderate';
         badge.className = 'z-badge ' + riskClass;
+      }
+    });
+  }
+
+  function renderSensors() {
+    const container = document.getElementById('sensorsList');
+    if (!container) return;
+
+    const cs = state.caseStudy || CASE_STUDIES['United States'];
+    const base = state.currentNoise || cs.baseNoise || 67;
+    const lat = state.lat || cs.lat;
+    const lng = state.lng || cs.lng;
+
+    const sensorNames = [
+      'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon',
+      'Zeta', 'Eta', 'Theta', 'Iota', 'Kappa',
+    ];
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+    const sensors = [];
+    const count = randInt(4, 7);
+    for (let i = 0; i < count; i++) {
+      const dist = randInt(30, 500);
+      const dir = directions[randInt(0, directions.length - 1)];
+      const variation = rand(-8, 8);
+      const noise = clamp(Math.round(base + variation), 20, 140);
+      const status = noise > 75 ? 'warning' : noise > 60 ? 'moderate' : 'good';
+      sensors.push({
+        name: 'Sensor ' + sensorNames[i],
+        distance: dist,
+        direction: dir,
+        noise: noise,
+        status: status,
+      });
+    }
+
+    sensors.sort((a, b) => a.distance - b.distance);
+
+    container.innerHTML = '<div class="sensor-header"><i class="fas fa-satellite-dish"></i> ' + count + ' sensors within 500m</div>' +
+      sensors.map(s => {
+        const icons = { good: 'fa-check-circle', moderate: 'fa-exclamation-circle', warning: 'fa-bell' };
+        const colors = { good: '#10b981', moderate: '#F59E0B', warning: '#EF4444' };
+        return '<div class="sensor-item ' + s.status + '">' +
+          '<div class="sensor-icon"><i class="fas ' + icons[s.status] + '" style="color:' + colors[s.status] + '"></i></div>' +
+          '<div class="sensor-info">' +
+            '<span class="sensor-name">' + s.name + '</span>' +
+            '<span class="sensor-loc">' + s.distance + 'm ' + s.direction + '</span>' +
+          '</div>' +
+          '<div class="sensor-reading" style="color:' + colors[s.status] + '">' + s.noise + ' dB</div>' +
+        '</div>';
+      }).join('');
+  }
+
+  function initClippy() {
+    const btn = document.getElementById('clippyBtn');
+    const bubble = document.getElementById('clippyBubble');
+    const content = document.getElementById('clippyContent');
+    if (!btn || !bubble || !content) return;
+
+    const tips = [
+      'Welcome to NoiseDNA! I\'m Clippy, your assistant 🤖',
+      'The dashboard shows real-time noise at <strong>your location</strong>',
+      'Auto-record captures 15s of noise, then pauses 5s — on loop',
+      'Nearby sensors show noise readings from devices around you',
+      'Use the Live Map to see noise hotspots in your area',
+      'The Forecast tab predicts noise trends for the day ahead',
+      'Quiet Routes finds the best path to avoid loud areas',
+      'Building Advisor helps design noise-resilient buildings',
+      'Sensitive Zones track noise at schools, hospitals & libraries',
+      'Share your noise data in the Community tab!',
+      'Reports let you submit noise observations with country data',
+      'Dark Mode reduces eye strain — toggle it in the sidebar',
+      'Your location is used for all noise estimates & case studies',
+    ];
+
+    let tipIndex = 0;
+    let isOpen = false;
+
+    btn.addEventListener('click', () => {
+      isOpen = !isOpen;
+      if (isOpen) {
+        tipIndex = (tipIndex + 1) % tips.length;
+        content.innerHTML = tips[tipIndex];
+        bubble.classList.add('show');
+      } else {
+        bubble.classList.remove('show');
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (isOpen && !btn.contains(e.target) && !bubble.contains(e.target)) {
+        isOpen = false;
+        bubble.classList.remove('show');
       }
     });
   }

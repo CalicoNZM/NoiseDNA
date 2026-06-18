@@ -99,6 +99,10 @@
                     <span style="opacity:0.5">·</span>
                     <span>v3.0</span>
                 </div>
+                <div class="sidebar-team">
+                    <span class="team-name">&lt; ANA &gt;*</span>
+                    <span class="team-members">Nazim · Amadeo · Andy</span>
+                </div>
             </div>
         </nav>
 
@@ -299,16 +303,6 @@
                         </div>
                     </div>
 
-                    <div class="card source-card">
-                        <div class="card-header">
-                            <span>Noise Source Distribution</span>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="sourceChart"></canvas>
-                        </div>
-                        <div class="source-legend" id="sourceLegend"></div>
-                    </div>
-
                     <div class="card hourly-card">
                         <div class="card-header">
                             <span>Noise Trend</span>
@@ -319,85 +313,12 @@
                         </div>
                     </div>
 
-                    <div class="card card-full alerts-card">
+                    <div class="card card-full sensors-card">
                         <div class="card-header">
-                            <span>Active Noise Alerts</span>
+                            <span>Nearby Noise Sensors</span>
+                            <span class="badge"><i class="fas fa-wifi"></i> Network</span>
                         </div>
-                        <div class="alerts-list">
-                            <div class="alert-item danger">
-                                <div class="alert-icon">
-                                    <i class="fas fa-building"></i>
-                                </div>
-                                <div class="alert-info">
-                                    <span class="alert-location"
-                                        >Times Square</span
-                                    >
-                                    <span class="alert-desc"
-                                        >Construction noise exceeding limits ·
-                                        87 dB</span
-                                    >
-                                </div>
-                                <span class="alert-time">2 min ago</span>
-                            </div>
-                            <div class="alert-item warning">
-                                <div class="alert-icon">
-                                    <i class="fas fa-road"></i>
-                                </div>
-                                <div class="alert-info">
-                                    <span class="alert-location"
-                                        >FDR Drive Corridor</span
-                                    >
-                                    <span class="alert-desc"
-                                        >Traffic surge detected · 79 dB</span
-                                    >
-                                </div>
-                                <span class="alert-time">15 min ago</span>
-                            </div>
-                            <div class="alert-item warning">
-                                <div class="alert-icon">
-                                    <i class="fas fa-train"></i>
-                                </div>
-                                <div class="alert-info">
-                                    <span class="alert-location"
-                                        >Grand Central Terminal</span
-                                    >
-                                    <span class="alert-desc"
-                                        >Railway activity peak · 76 dB</span
-                                    >
-                                </div>
-                                <span class="alert-time">42 min ago</span>
-                            </div>
-                            <div class="alert-item info">
-                                <div class="alert-icon">
-                                    <i class="fas fa-microphone"></i>
-                                </div>
-                                <div class="alert-info">
-                                    <span class="alert-location"
-                                        >NYC Sensor Network Node #A7</span
-                                    >
-                                    <span class="alert-desc"
-                                        >Sensor recalibrated · Normal
-                                        readings</span
-                                    >
-                                </div>
-                                <span class="alert-time">1h ago</span>
-                            </div>
-                            <div class="alert-item success">
-                                <div class="alert-icon">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <div class="alert-info">
-                                    <span class="alert-location"
-                                        >Central Park</span
-                                    >
-                                    <span class="alert-desc"
-                                        >Noise levels normalized after green
-                                        barrier intervention</span
-                                    >
-                                </div>
-                                <span class="alert-time">3h ago</span>
-                            </div>
-                        </div>
+                        <div class="sensors-list" id="sensorsList"></div>
                     </div>
                 </div>
             </section>
@@ -983,5 +904,17 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
         <script src="js/api.js"></script>
         <script src="js/app.js"></script>
+
+        <div class="clippy-assistant" id="clippyAssistant">
+            <div class="clippy-bubble" id="clippyBubble">
+                <div class="clippy-bubble-content" id="clippyContent">
+                    Hi! I'm <strong>Clippy</strong> 👋<br>Need help navigating NoiseDNA?
+                </div>
+                <div class="clippy-bubble-arrow"></div>
+            </div>
+            <button class="clippy-btn" id="clippyBtn" title="Clippy Assistant">
+                <i class="fas fa-paperclip"></i>
+            </button>
+        </div>
     </body>
 </html>
