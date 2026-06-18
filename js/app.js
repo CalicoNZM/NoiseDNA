@@ -99,8 +99,37 @@
     return hours;
   }
 
-  function generateSourceDistribution() {
-    const sources = NOISE_SOURCE_LABELS.map(s => ({ ...s, value: randInt(5, 50) }));
+  function generateSourceDistribution(baseNoise) {
+    const hour = new Date().getHours();
+    const isWeekend = [0, 6].includes(new Date().getDay());
+    let trafficRange, constrRange, eventsRange, indusRange, railRange, aircraftRange, gatherRange;
+
+    if (hour >= 7 && hour <= 9) {
+      trafficRange = [40, 50]; constrRange = [10, 18]; indusRange = [5, 10];
+      railRange = [8, 15]; aircraftRange = [5, 8]; eventsRange = [2, 5]; gatherRange = [2, 5];
+    } else if (hour >= 11 && hour <= 14) {
+      trafficRange = [15, 25]; constrRange = [25, 35]; indusRange = [10, 18];
+      railRange = [5, 10]; aircraftRange = [5, 10]; eventsRange = [5, 10]; gatherRange = [5, 10];
+    } else if (hour >= 17 && hour <= 19) {
+      trafficRange = [40, 50]; constrRange = [8, 15]; indusRange = [5, 10];
+      railRange = [8, 12]; aircraftRange = [5, 8]; eventsRange = [5, 10]; gatherRange = [5, 8];
+    } else if (hour >= 23 || hour < 5) {
+      trafficRange = [18, 25]; constrRange = [2, 5]; indusRange = [15, 20];
+      railRange = [3, 8]; aircraftRange = [2, 5]; eventsRange = [1, 3]; gatherRange = [1, 3];
+    } else if (isWeekend && hour >= 20) {
+      trafficRange = [15, 25]; constrRange = [2, 5]; indusRange = [5, 10];
+      railRange = [3, 8]; aircraftRange = [2, 5]; eventsRange = [20, 30]; gatherRange = [15, 25];
+    } else {
+      trafficRange = [22, 32]; constrRange = [15, 25]; indusRange = [8, 15];
+      railRange = [5, 12]; aircraftRange = [3, 8]; eventsRange = [3, 8]; gatherRange = [3, 8];
+    }
+
+    const ids = ['traffic','construction','industrial','railway','aircraft','events','gatherings'];
+    const ranges = [trafficRange, constrRange, indusRange, railRange, aircraftRange, eventsRange, gatherRange];
+    const sources = ids.map((id, i) => ({
+      id, label: NOISE_SOURCE_LABELS[i].label, color: NOISE_SOURCE_LABELS[i].color,
+      value: randInt(ranges[i][0], ranges[i][1]),
+    }));
     const total = sources.reduce((a, s) => a + s.value, 0);
     sources.forEach(s => { s.pct = Math.round((s.value / total) * 100); });
     return sources;
@@ -117,21 +146,382 @@
     });
   }
 
-  function generateMapHotspots() {
-    const center = [40.7128, -74.0060];
+  const CASE_STUDIES = {
+    'United States': {
+      name: 'NYC Case Study', lat: 40.7128, lng: -74.0060, baseNoise: 67, population: 8400000,
+      landmarks: {
+        'Central Park': [40.7829, -73.9654],
+        'Times Square, NYC': [40.7580, -73.9855],
+        'Grand Central Terminal': [40.7527, -73.9772],
+        'Brooklyn Bridge': [40.7061, -73.9969],
+        'Union Square': [40.7359, -73.9911],
+        'Wall Street': [40.7074, -74.0113],
+        'Madison Square Garden': [40.7505, -73.9934],
+        'One World Trade Center': [40.7127, -74.0134],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'PS 321 School', type: 'school', lat: 40.718, lng: -73.995, baseNoise: 62 },
+        { id: 'hospital-1', name: 'NYU Langone Hospital', type: 'hospital', lat: 40.742, lng: -73.974, baseNoise: 58 },
+        { id: 'library-1', name: 'NY Public Library', type: 'library', lat: 40.752, lng: -73.982, baseNoise: 48 },
+        { id: 'school-2', name: 'Columbia University', type: 'school', lat: 40.807, lng: -73.962, baseNoise: 60 },
+        { id: 'hospital-2', name: 'Mount Sinai Hospital', type: 'hospital', lat: 40.790, lng: -73.952, baseNoise: 55 },
+        { id: 'library-2', name: 'Brooklyn Public Library', type: 'library', lat: 40.672, lng: -73.968, baseNoise: 45 },
+      ],
+      zoneGroups: {
+        school: { cards: ['PS 321 School', 'Columbia University'], name: 'NYC Public Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['NYU Langone Hospital', 'Mount Sinai Hospital'], name: 'NYC Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['NY Public Library', 'Brooklyn Public Library'], name: 'NYPL Branches', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    Belgium: {
+      name: 'Brussels Case Study', lat: 50.8503, lng: 4.3517, baseNoise: 58, population: 1200000,
+      landmarks: {
+        'Grand Place': [50.8467, 4.3525],
+        'Atomium': [50.8949, 4.3416],
+        'Cinquantenaire Park': [50.8400, 4.3950],
+        'European Parliament': [50.8378, 4.3746],
+        'Royal Palace': [50.8419, 4.3621],
+        'Sablon': [50.8412, 4.3564],
+        'Mont des Arts': [50.8431, 4.3578],
+        'Place du Luxembourg': [50.8387, 4.3731],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'ULB Solbosch', type: 'school', lat: 50.8126, lng: 4.3821, baseNoise: 55 },
+        { id: 'hospital-1', name: 'UZ Brussel', type: 'hospital', lat: 50.8846, lng: 4.3161, baseNoise: 52 },
+        { id: 'library-1', name: 'Royal Library of Belgium', type: 'library', lat: 50.8428, lng: 4.3572, baseNoise: 42 },
+        { id: 'school-2', name: 'Vrije Universiteit Brussel', type: 'school', lat: 50.8206, lng: 4.3961, baseNoise: 53 },
+        { id: 'hospital-2', name: 'Saint-Luc Hospital', type: 'hospital', lat: 50.8537, lng: 4.3461, baseNoise: 50 },
+        { id: 'library-2', name: 'Muntpunt Library', type: 'library', lat: 50.8456, lng: 4.3500, baseNoise: 40 },
+      ],
+      zoneGroups: {
+        school: { cards: ['ULB Solbosch', 'Vrije Universiteit Brussel'], name: 'Brussels Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['UZ Brussel', 'Saint-Luc Hospital'], name: 'Brussels Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['Royal Library of Belgium', 'Muntpunt Library'], name: 'Brussels Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    Malaysia: {
+      name: 'Kuala Lumpur Case Study', lat: 3.1390, lng: 101.6869, baseNoise: 72, population: 1800000,
+      landmarks: {
+        'Petronas Towers': [3.1579, 101.7121],
+        'Merdeka Square': [3.1481, 101.6940],
+        'Bukit Bintang': [3.1466, 101.7108],
+        'KL Tower': [3.1527, 101.7033],
+        'Central Market': [3.1474, 101.6958],
+        'KL Sentral': [3.1340, 101.6865],
+        'Lake Gardens': [3.1426, 101.6894],
+        'Batu Caves': [3.2374, 101.6839],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'University of Malaya', type: 'school', lat: 3.1179, lng: 101.6557, baseNoise: 65 },
+        { id: 'hospital-1', name: 'KL General Hospital', type: 'hospital', lat: 3.1735, lng: 101.6980, baseNoise: 62 },
+        { id: 'library-1', name: 'KL Public Library', type: 'library', lat: 3.1500, lng: 101.6950, baseNoise: 52 },
+        { id: 'school-2', name: 'Taylors University', type: 'school', lat: 3.0645, lng: 101.6141, baseNoise: 63 },
+        { id: 'hospital-2', name: 'Pantai Hospital', type: 'hospital', lat: 3.1175, lng: 101.6771, baseNoise: 60 },
+        { id: 'library-2', name: 'Perpustakaan Negara', type: 'library', lat: 3.1502, lng: 101.6986, baseNoise: 48 },
+      ],
+      zoneGroups: {
+        school: { cards: ['University of Malaya', 'Taylors University'], name: 'KL Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['KL General Hospital', 'Pantai Hospital'], name: 'KL Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['KL Public Library', 'Perpustakaan Negara'], name: 'KL Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    Kenya: {
+      name: 'Nairobi Case Study', lat: -1.2921, lng: 36.8219, baseNoise: 55, population: 4400000,
+      landmarks: {
+        'Nairobi National Park': [-1.3733, 36.8588],
+        'Kenyatta International': [-1.2863, 36.8172],
+        'Nairobi CBD': [-1.2864, 36.8236],
+        'Westlands': [-1.2667, 36.8118],
+        'Karen': [-1.3315, 36.7200],
+        'Giraffe Centre': [-1.3818, 36.7445],
+        'Bomas of Kenya': [-1.3740, 36.7470],
+        'KICC': [-1.2869, 36.8219],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'University of Nairobi', type: 'school', lat: -1.2794, lng: 36.8163, baseNoise: 50 },
+        { id: 'hospital-1', name: 'Kenyatta National Hospital', type: 'hospital', lat: -1.2977, lng: 36.8036, baseNoise: 48 },
+        { id: 'library-1', name: 'McMillan Memorial Library', type: 'library', lat: -1.2847, lng: 36.8225, baseNoise: 38 },
+        { id: 'school-2', name: 'Strathmore University', type: 'school', lat: -1.3163, lng: 36.8085, baseNoise: 48 },
+        { id: 'hospital-2', name: 'Aga Khan Hospital', type: 'hospital', lat: -1.2620, lng: 36.8150, baseNoise: 46 },
+        { id: 'library-2', name: 'Nairobi National Library', type: 'library', lat: -1.2830, lng: 36.8200, baseNoise: 36 },
+      ],
+      zoneGroups: {
+        school: { cards: ['University of Nairobi', 'Strathmore University'], name: 'Nairobi Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['Kenyatta National Hospital', 'Aga Khan Hospital'], name: 'Nairobi Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['McMillan Memorial Library', 'Nairobi National Library'], name: 'Nairobi Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    'United Kingdom': {
+      name: 'London Case Study', lat: 51.5074, lng: -0.1278, baseNoise: 64, population: 8900000,
+      landmarks: {
+        'Buckingham Palace': [51.5014, -0.1419],
+        'Big Ben': [51.5007, -0.1246],
+        'London Eye': [51.5033, -0.1195],
+        'Trafalgar Square': [51.5080, -0.1283],
+        'Camden Town': [51.5387, -0.1422],
+        'Greenwich': [51.4826, -0.0077],
+        'Shoreditch': [51.5253, -0.0757],
+        'Notting Hill': [51.5088, -0.2030],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'UCL', type: 'school', lat: 51.5246, lng: -0.1336, baseNoise: 58 },
+        { id: 'hospital-1', name: "St Thomas Hospital", type: 'hospital', lat: 51.4988, lng: -0.1187, baseNoise: 55 },
+        { id: 'library-1', name: 'British Library', type: 'library', lat: 51.5299, lng: -0.1276, baseNoise: 44 },
+        { id: 'school-2', name: 'Imperial College', type: 'school', lat: 51.4988, lng: -0.1749, baseNoise: 56 },
+        { id: 'hospital-2', name: "Guys Hospital", type: 'hospital', lat: 51.5013, lng: -0.0883, baseNoise: 53 },
+        { id: 'library-2', name: 'Barbican Library', type: 'library', lat: 51.5199, lng: -0.0940, baseNoise: 42 },
+      ],
+      zoneGroups: {
+        school: { cards: ['UCL', 'Imperial College'], name: 'London Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['St Thomas Hospital', 'Guys Hospital'], name: 'London Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['British Library', 'Barbican Library'], name: 'London Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    France: {
+      name: 'Paris Case Study', lat: 48.8566, lng: 2.3522, baseNoise: 63, population: 2160000,
+      landmarks: {
+        'Eiffel Tower': [48.8584, 2.2945],
+        'Louvre Museum': [48.8606, 2.3376],
+        'Arc de Triomphe': [48.8738, 2.2950],
+        'Notre-Dame': [48.8530, 2.3499],
+        'Montmartre': [48.8867, 2.3431],
+        'Champs-Elysees': [48.8698, 2.3075],
+        'Le Marais': [48.8591, 2.3618],
+        'Luxembourg Gardens': [48.8462, 2.3372],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'Sorbonne University', type: 'school', lat: 48.8490, lng: 2.3430, baseNoise: 57 },
+        { id: 'hospital-1', name: 'Hopital Pitie-Salpetriere', type: 'hospital', lat: 48.8379, lng: 2.3644, baseNoise: 54 },
+        { id: 'library-1', name: 'Bibliotheque Nationale', type: 'library', lat: 48.8333, lng: 2.3756, baseNoise: 43 },
+        { id: 'school-2', name: 'Ecole Polytechnique', type: 'school', lat: 48.7142, lng: 2.2101, baseNoise: 55 },
+        { id: 'hospital-2', name: 'Hopital Necker', type: 'hospital', lat: 48.8492, lng: 2.3116, baseNoise: 52 },
+        { id: 'library-2', name: 'Bibliotheque Sainte-Genevieve', type: 'library', lat: 48.8498, lng: 2.3455, baseNoise: 41 },
+      ],
+      zoneGroups: {
+        school: { cards: ['Sorbonne University', 'Ecole Polytechnique'], name: 'Paris Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['Hopital Pitie-Salpetriere', 'Hopital Necker'], name: 'Paris Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['Bibliotheque Nationale', 'Bibliotheque Sainte-Genevieve'], name: 'Paris Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    Germany: {
+      name: 'Berlin Case Study', lat: 52.5200, lng: 13.4050, baseNoise: 62, population: 3600000,
+      landmarks: {
+        'Brandenburg Gate': [52.5163, 13.3777],
+        'Reichstag': [52.5186, 13.3762],
+        'Alexanderplatz': [52.5219, 13.4132],
+        'East Side Gallery': [52.5051, 13.4404],
+        'Potsdamer Platz': [52.5092, 13.3760],
+        'Tiergarten': [52.5145, 13.3698],
+        'Kreuzberg': [52.4969, 13.3840],
+        'Prenzlauer Berg': [52.5402, 13.4185],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'Humboldt University', type: 'school', lat: 52.5186, lng: 13.3937, baseNoise: 56 },
+        { id: 'hospital-1', name: 'Charite Hospital', type: 'hospital', lat: 52.5278, lng: 13.3769, baseNoise: 53 },
+        { id: 'library-1', name: 'Staatsbibliothek', type: 'library', lat: 52.5072, lng: 13.3672, baseNoise: 42 },
+        { id: 'school-2', name: 'TU Berlin', type: 'school', lat: 52.5122, lng: 13.3267, baseNoise: 54 },
+        { id: 'hospital-2', name: 'Vivantes Hospital', type: 'hospital', lat: 52.5446, lng: 13.4110, baseNoise: 51 },
+        { id: 'library-2', name: 'Berlin Public Library', type: 'library', lat: 52.5250, lng: 13.4040, baseNoise: 40 },
+      ],
+      zoneGroups: {
+        school: { cards: ['Humboldt University', 'TU Berlin'], name: 'Berlin Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['Charite Hospital', 'Vivantes Hospital'], name: 'Berlin Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['Staatsbibliothek', 'Berlin Public Library'], name: 'Berlin Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    Japan: {
+      name: 'Tokyo Case Study', lat: 35.6762, lng: 139.6503, baseNoise: 68, population: 13900000,
+      landmarks: {
+        'Shibuya Crossing': [35.6595, 139.7004],
+        'Tokyo Tower': [35.6586, 139.7454],
+        'Shinjuku': [35.6896, 139.7006],
+        'Asakusa': [35.7148, 139.7967],
+        'Ueno Park': [35.7140, 139.7739],
+        'Ginza': [35.6717, 139.7662],
+        'Akihabara': [35.7022, 139.7749],
+        'Roppongi': [35.6605, 139.7292],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'University of Tokyo', type: 'school', lat: 35.7132, lng: 139.7620, baseNoise: 62 },
+        { id: 'hospital-1', name: 'Tokyo University Hospital', type: 'hospital', lat: 35.7140, lng: 139.7650, baseNoise: 59 },
+        { id: 'library-1', name: 'National Diet Library', type: 'library', lat: 35.6778, lng: 139.7475, baseNoise: 48 },
+        { id: 'school-2', name: 'Waseda University', type: 'school', lat: 35.7053, lng: 139.7204, baseNoise: 60 },
+        { id: 'hospital-2', name: 'St Lukes Hospital', type: 'hospital', lat: 35.6676, lng: 139.7791, baseNoise: 57 },
+        { id: 'library-2', name: 'Tokyo Metropolitan Library', type: 'library', lat: 35.6910, lng: 139.7200, baseNoise: 45 },
+      ],
+      zoneGroups: {
+        school: { cards: ['University of Tokyo', 'Waseda University'], name: 'Tokyo Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['Tokyo University Hospital', 'St Lukes Hospital'], name: 'Tokyo Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['National Diet Library', 'Tokyo Metropolitan Library'], name: 'Tokyo Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    Australia: {
+      name: 'Sydney Case Study', lat: -33.8688, lng: 151.2093, baseNoise: 61, population: 5300000,
+      landmarks: {
+        'Sydney Opera House': [-33.8568, 151.2153],
+        'Harbour Bridge': [-33.8523, 151.2108],
+        'Bondi Beach': [-33.8915, 151.2767],
+        'Darling Harbour': [-33.8730, 151.1986],
+        'The Rocks': [-33.8597, 151.2091],
+        'Circular Quay': [-33.8615, 151.2107],
+        'Surry Hills': [-33.8820, 151.2100],
+        'Paddington': [-33.8830, 151.2260],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'University of Sydney', type: 'school', lat: -33.8883, lng: 151.1871, baseNoise: 55 },
+        { id: 'hospital-1', name: 'Royal Prince Alfred', type: 'hospital', lat: -33.8951, lng: 151.1765, baseNoise: 52 },
+        { id: 'library-1', name: 'State Library NSW', type: 'library', lat: -33.8662, lng: 151.2125, baseNoise: 42 },
+        { id: 'school-2', name: 'UNSW Sydney', type: 'school', lat: -33.9170, lng: 151.2312, baseNoise: 54 },
+        { id: 'hospital-2', name: 'St Vincents Hospital', type: 'hospital', lat: -33.8798, lng: 151.2263, baseNoise: 50 },
+        { id: 'library-2', name: 'Green Square Library', type: 'library', lat: -33.9060, lng: 151.2010, baseNoise: 40 },
+      ],
+      zoneGroups: {
+        school: { cards: ['University of Sydney', 'UNSW Sydney'], name: 'Sydney Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['Royal Prince Alfred', 'St Vincents Hospital'], name: 'Sydney Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['State Library NSW', 'Green Square Library'], name: 'Sydney Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    Brazil: {
+      name: 'Sao Paulo Case Study', lat: -23.5505, lng: -46.6333, baseNoise: 70, population: 12300000,
+      landmarks: {
+        'Paulista Avenue': [-23.5610, -46.6565],
+        'Ibirapuera Park': [-23.5874, -46.6576],
+        'Centro Historico': [-23.5483, -46.6359],
+        'Morumbi': [-23.6033, -46.7078],
+        'Pinheiros': [-23.5655, -46.6879],
+        'Vila Madalena': [-23.5555, -46.6930],
+        'Berini': [-23.5700, -46.6540],
+        'Avenida Faria Lima': [-23.5667, -46.6883],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'USP', type: 'school', lat: -23.5622, lng: -46.7200, baseNoise: 64 },
+        { id: 'hospital-1', name: 'Hospital das Clinicas', type: 'hospital', lat: -23.5583, lng: -46.6719, baseNoise: 61 },
+        { id: 'library-1', name: 'Biblioteca Mario de Andrade', type: 'library', lat: -23.5475, lng: -46.6380, baseNoise: 50 },
+        { id: 'school-2', name: 'UNESP', type: 'school', lat: -23.4446, lng: -46.5300, baseNoise: 62 },
+        { id: 'hospital-2', name: 'Hospital Sirio-Libanes', type: 'hospital', lat: -23.5656, lng: -46.6525, baseNoise: 59 },
+        { id: 'library-2', name: 'SP Public Library', type: 'library', lat: -23.5450, lng: -46.6350, baseNoise: 48 },
+      ],
+      zoneGroups: {
+        school: { cards: ['USP', 'UNESP'], name: 'Sao Paulo Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['Hospital das Clinicas', 'Hospital Sirio-Libanes'], name: 'SP Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['Biblioteca Mario de Andrade', 'SP Public Library'], name: 'SP Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    India: {
+      name: 'Mumbai Case Study', lat: 19.0760, lng: 72.8777, baseNoise: 75, population: 12400000,
+      landmarks: {
+        'Gateway of India': [18.9220, 72.8347],
+        'Marine Drive': [18.9435, 72.8232],
+        'Colaba': [18.9101, 72.8146],
+        'Bandra Kurla Complex': [19.0621, 72.8535],
+        'Andheri': [19.1191, 72.8464],
+        'Powai': [19.1176, 72.9052],
+        'Worli': [19.0005, 72.8161],
+        'Juhu Beach': [19.0883, 72.8263],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'IIT Bombay', type: 'school', lat: 19.1334, lng: 72.9167, baseNoise: 68 },
+        { id: 'hospital-1', name: 'KEM Hospital', type: 'hospital', lat: 19.0097, lng: 72.8414, baseNoise: 65 },
+        { id: 'library-1', name: 'David Sassoon Library', type: 'library', lat: 18.9310, lng: 72.8315, baseNoise: 55 },
+        { id: 'school-2', name: 'University of Mumbai', type: 'school', lat: 18.9330, lng: 72.8280, baseNoise: 66 },
+        { id: 'hospital-2', name: 'Lilavati Hospital', type: 'hospital', lat: 19.0460, lng: 72.8289, baseNoise: 63 },
+        { id: 'library-2', name: 'Mumbai Public Library', type: 'library', lat: 18.9350, lng: 72.8300, baseNoise: 52 },
+      ],
+      zoneGroups: {
+        school: { cards: ['IIT Bombay', 'University of Mumbai'], name: 'Mumbai Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['KEM Hospital', 'Lilavati Hospital'], name: 'Mumbai Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['David Sassoon Library', 'Mumbai Public Library'], name: 'Mumbai Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    China: {
+      name: 'Shanghai Case Study', lat: 31.2304, lng: 121.4737, baseNoise: 73, population: 24000000,
+      landmarks: {
+        'The Bund': [31.2360, 121.4906],
+        'Oriental Pearl Tower': [31.2410, 121.4997],
+        'Nanjing Road': [31.2370, 121.4730],
+        'Peoples Square': [31.2319, 121.4723],
+        'French Concession': [31.2100, 121.4520],
+        'Lujiazui': [31.2405, 121.5006],
+        'Jingan Temple': [31.2228, 121.4463],
+        'Yu Garden': [31.2284, 121.4930],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'Fudan University', type: 'school', lat: 31.2965, lng: 121.4990, baseNoise: 66 },
+        { id: 'hospital-1', name: 'Shanghai General Hospital', type: 'hospital', lat: 31.2459, lng: 121.4772, baseNoise: 63 },
+        { id: 'library-1', name: 'Shanghai Library', type: 'library', lat: 31.2106, lng: 121.4417, baseNoise: 52 },
+        { id: 'school-2', name: 'Shanghai Jiao Tong University', type: 'school', lat: 31.2030, lng: 121.4297, baseNoise: 64 },
+        { id: 'hospital-2', name: 'Huadong Hospital', type: 'hospital', lat: 31.2175, lng: 121.4519, baseNoise: 61 },
+        { id: 'library-2', name: 'Shanghai Public Library', type: 'library', lat: 31.2200, lng: 121.4500, baseNoise: 50 },
+      ],
+      zoneGroups: {
+        school: { cards: ['Fudan University', 'Shanghai Jiao Tong University'], name: 'Shanghai Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['Shanghai General Hospital', 'Huadong Hospital'], name: 'Shanghai Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['Shanghai Library', 'Shanghai Public Library'], name: 'Shanghai Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+    'South Korea': {
+      name: 'Seoul Case Study', lat: 37.5665, lng: 126.9780, baseNoise: 69, population: 9700000,
+      landmarks: {
+        'Gyeongbokgung Palace': [37.5796, 126.9770],
+        'N Seoul Tower': [37.5512, 126.9882],
+        'Myeongdong': [37.5609, 126.9864],
+        'Gangnam': [37.4965, 127.0285],
+        'Hongdae': [37.5563, 126.9251],
+        'Itaewon': [37.5343, 126.9917],
+        'Bukchon Hanok': [37.5838, 126.9855],
+        'Han River Park': [37.5280, 126.9345],
+      },
+      sensitiveZones: [
+        { id: 'school-1', name: 'Seoul National University', type: 'school', lat: 37.4599, lng: 126.9519, baseNoise: 62 },
+        { id: 'hospital-1', name: 'Seoul National University Hospital', type: 'hospital', lat: 37.5797, lng: 126.9986, baseNoise: 59 },
+        { id: 'library-1', name: 'National Library of Korea', type: 'library', lat: 37.4976, lng: 127.0031, baseNoise: 48 },
+        { id: 'school-2', name: 'Yonsei University', type: 'school', lat: 37.5649, lng: 126.9376, baseNoise: 60 },
+        { id: 'hospital-2', name: 'Samsung Medical Center', type: 'hospital', lat: 37.4860, lng: 127.0841, baseNoise: 57 },
+        { id: 'library-2', name: 'Seoul Metropolitan Library', type: 'library', lat: 37.5665, lng: 126.9786, baseNoise: 45 },
+      ],
+      zoneGroups: {
+        school: { cards: ['Seoul National University', 'Yonsei University'], name: 'Seoul Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['Seoul National University Hospital', 'Samsung Medical Center'], name: 'Seoul Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['National Library of Korea', 'Seoul Metropolitan Library'], name: 'Seoul Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    },
+  };
+
+  function getCaseStudy(country) {
+    if (!country || country === 'Other') return CASE_STUDIES['United States'];
+    return CASE_STUDIES[country] || {
+      name: country + ' Case Study',
+      lat: 0, lng: 0, baseNoise: 60, population: 1000000,
+      landmarks: { 'City Center': [0, 0], 'Central Station': [0.01, 0.01] },
+      sensitiveZones: [
+        { id: 'school-1', name: 'Local School', type: 'school', lat: 0.005, lng: 0.005, baseNoise: 55 },
+        { id: 'hospital-1', name: 'General Hospital', type: 'hospital', lat: -0.005, lng: 0.005, baseNoise: 52 },
+        { id: 'library-1', name: 'Public Library', type: 'library', lat: 0, lng: 0.01, baseNoise: 42 },
+        { id: 'school-2', name: 'University Campus', type: 'school', lat: -0.01, lng: -0.01, baseNoise: 53 },
+        { id: 'hospital-2', name: 'City Hospital', type: 'hospital', lat: 0.01, lng: -0.01, baseNoise: 50 },
+        { id: 'library-2', name: 'City Library', type: 'library', lat: -0.005, lng: -0.005, baseNoise: 40 },
+      ],
+      zoneGroups: {
+        school: { cards: ['Local School', 'University Campus'], name: 'Schools', icon: 'fa-school', color: '#06B6D4' },
+        hospital: { cards: ['General Hospital', 'City Hospital'], name: 'Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+        library: { cards: ['Public Library', 'City Library'], name: 'Libraries', icon: 'fa-book', color: '#F59E0B' },
+      },
+    };
+  }
+
+  function generateMapHotspots(caseStudy) {
+    const cs = caseStudy || CASE_STUDIES['United States'];
+    const center = [cs.lat, cs.lng];
+    const landmarkNames = cs.landmarks ? Object.keys(cs.landmarks) : [];
     const zones = [
-      { name: 'Downtown', latOff: 0.003, lngOff: -0.002, intensity: 0.9 },
-      { name: 'Times Square', latOff: 0.002, lngOff: 0.006, intensity: 1.0 },
-      { name: 'Central Park', latOff: 0.013, lngOff: -0.003, intensity: 0.2 },
-      { name: 'Financial District', latOff: -0.008, lngOff: -0.001, intensity: 0.85 },
-      { name: 'Midtown', latOff: 0.006, lngOff: 0.002, intensity: 0.8 },
-      { name: 'Upper East Side', latOff: 0.018, lngOff: 0.001, intensity: 0.4 },
-      { name: 'Brooklyn Bridge', latOff: -0.005, lngOff: 0.008, intensity: 0.7 },
-      { name: 'Hudson Yards', latOff: 0.004, lngOff: -0.007, intensity: 0.75 },
-      { name: 'East Village', latOff: 0.001, lngOff: 0.012, intensity: 0.65 },
-      { name: 'Harlem', latOff: 0.022, lngOff: -0.002, intensity: 0.55 },
-      { name: 'Chelsea', latOff: 0.007, lngOff: -0.005, intensity: 0.6 },
-      { name: 'Greenwich Village', latOff: 0.002, lngOff: 0.003, intensity: 0.5 },
+      { name: landmarkNames[0] || 'Downtown', latOff: 0.003, lngOff: -0.002, intensity: 0.9 },
+      { name: landmarkNames[1] || 'City Center', latOff: 0.002, lngOff: 0.004, intensity: 1.0 },
+      { name: landmarkNames[2] || 'Park', latOff: 0.01, lngOff: -0.003, intensity: 0.2 },
+      { name: landmarkNames[3] || 'District', latOff: -0.006, lngOff: 0, intensity: 0.85 },
+      { name: landmarkNames[4] || 'Suburb', latOff: 0.005, lngOff: 0.002, intensity: 0.8 },
+      { name: landmarkNames[5] || 'East Side', latOff: 0.015, lngOff: 0, intensity: 0.4 },
+      { name: landmarkNames[6] || 'Bridge Area', latOff: -0.004, lngOff: 0.007, intensity: 0.7 },
+      { name: landmarkNames[7] || 'Waterfront', latOff: 0.004, lngOff: -0.006, intensity: 0.75 },
     ];
     const hotspots = [];
     zones.forEach(z => {
@@ -148,6 +538,201 @@
       }
     });
     return hotspots;
+  }
+
+  function distToLine(lat, lng, lat1, lng1, lat2, lng2) {
+    const A = lat - lat1;
+    const B = lng - lng1;
+    const C = lat2 - lat1;
+    const D = lng2 - lng1;
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    const t = lenSq !== 0 ? clamp(dot / lenSq, 0, 1) : 0;
+    const projLat = lat1 + t * C;
+    const projLng = lng1 + t * D;
+    return Math.sqrt((lat - projLat) * (lat - projLat) + (lng - projLng) * (lng - projLng));
+  }
+
+  let routeMapInstance = null;
+  let routeLayers = [];
+
+  function generateDynamicRoutes(startLat, startLng, endLat, endLng) {
+    const GRID = 12;
+    const pad = 0.015;
+    const minLat = Math.min(startLat, endLat) - pad;
+    const maxLat = Math.max(startLat, endLat) + pad;
+    const minLng = Math.min(startLng, endLng) - pad;
+    const maxLng = Math.max(startLng, endLng) + pad;
+    const latStep = (maxLat - minLat) / GRID;
+    const lngStep = (maxLng - minLng) / GRID;
+
+    const grid = [];
+    for (let i = 0; i < GRID; i++) {
+      grid[i] = [];
+      for (let j = 0; j < GRID; j++) {
+        const clat = minLat + (i + 0.5) * latStep;
+        const clng = minLng + (j + 0.5) * lngStep;
+        const dist = distToLine(clat, clng, startLat, startLng, endLat, endLng);
+        let noise, speed;
+        if (dist < 0.002) { noise = rand(65, 80); speed = 25; }
+        else if (dist < 0.006) { noise = rand(50, 65); speed = 15; }
+        else { noise = rand(35, 50); speed = 8; }
+        grid[i][j] = { noise, speed, lat: clat, lng: clng };
+      }
+    }
+
+    function gridKey(i, j) { return i + ',' + j; }
+
+    function cellDist(i1, j1, i2, j2) {
+      const dlat = (i2 - i1) * latStep;
+      const dlng = (j2 - j1) * lngStep;
+      return Math.sqrt(dlat * dlat + dlng * dlng) * 111000;
+    }
+
+    function findPath(costWeight) {
+      const si = clamp(Math.round((startLat - minLat) / latStep - 0.5), 0, GRID - 1);
+      const sj = clamp(Math.round((startLng - minLng) / lngStep - 0.5), 0, GRID - 1);
+      const ei = clamp(Math.round((endLat - minLat) / latStep - 0.5), 0, GRID - 1);
+      const ej = clamp(Math.round((endLng - minLng) / lngStep - 0.5), 0, GRID - 1);
+
+      const start = { i: si, j: sj };
+      const end = { i: ei, j: ej };
+      let openSet = [start];
+      const cameFrom = {};
+      const gScore = {};
+      const fScore = {};
+      const startKey = gridKey(si, sj);
+      gScore[startKey] = 0;
+      fScore[startKey] = cellDist(si, sj, ei, ej);
+
+      const maxIter = GRID * GRID * 4;
+      let iter = 0;
+
+      while (openSet.length > 0 && iter < maxIter) {
+        iter++;
+        let lowestIdx = 0;
+        for (let k = 1; k < openSet.length; k++) {
+          const k1 = gridKey(openSet[k].i, openSet[k].j);
+          const k0 = gridKey(openSet[lowestIdx].i, openSet[lowestIdx].j);
+          if ((fScore[k1] || Infinity) < (fScore[k0] || Infinity)) lowestIdx = k;
+        }
+        const current = openSet[lowestIdx];
+        if (current.i === end.i && current.j === end.j) {
+          const path = [];
+          let c = current;
+          while (c) {
+            const lat = minLat + (c.i + 0.5) * latStep + rand(-latStep * 0.2, latStep * 0.2);
+            const lng = minLng + (c.j + 0.5) * lngStep + rand(-lngStep * 0.2, lngStep * 0.2);
+            path.unshift([lat, lng]);
+            const ck = gridKey(c.i, c.j);
+            c = cameFrom[ck];
+          }
+          return path;
+        }
+
+        openSet.splice(lowestIdx, 1);
+        const cKey = gridKey(current.i, current.j);
+
+        for (let di = -1; di <= 1; di++) {
+          for (let dj = -1; dj <= 1; dj++) {
+            if (di === 0 && dj === 0) continue;
+            const ni = current.i + di;
+            const nj = current.j + dj;
+            if (ni < 0 || ni >= GRID || nj < 0 || nj >= GRID) continue;
+
+            const cell = grid[ni][nj];
+            const moveDist = cellDist(current.i, current.j, ni, nj);
+            const timeCost = moveDist / (cell.speed * 1000 / 60 / 60);
+            const noiseCost = (cell.noise / 100) * costWeight * moveDist;
+            const tentG = (gScore[cKey] || 0) + timeCost / 60 + noiseCost / 1000;
+            const nKey = gridKey(ni, nj);
+
+            if (tentG < (gScore[nKey] || Infinity)) {
+              cameFrom[nKey] = { i: current.i, j: current.j };
+              gScore[nKey] = tentG;
+              fScore[nKey] = tentG + cellDist(ni, nj, ei, ej) / 25000;
+              if (!openSet.find(n => n.i === ni && n.j === nj)) {
+                openSet.push({ i: ni, j: nj });
+              }
+            }
+          }
+        }
+      }
+
+      const fallback = [];
+      const steps = 8;
+      for (let t = 0; t <= steps; t++) {
+        const f = t / steps;
+        fallback.push([startLat + (endLat - startLat) * f, startLng + (endLng - startLng) * f]);
+      }
+      return fallback;
+    }
+
+    const fastestPath = findPath(0.1);
+    const balancedPath = findPath(0.6);
+    const quietestPath = findPath(2.0);
+
+    function haversine(pts) {
+      let total = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const dlat = (pts[i][0] - pts[i - 1][0]) * Math.PI / 180;
+        const dlng = (pts[i][1] - pts[i - 1][1]) * Math.PI / 180;
+        const a = Math.sin(dlat / 2) * Math.sin(dlat / 2) +
+          Math.cos(pts[i - 1][0] * Math.PI / 180) * Math.cos(pts[i][0] * Math.PI / 180) *
+          Math.sin(dlng / 2) * Math.sin(dlng / 2);
+        total += 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+      return Math.round(total * 10) / 10;
+    }
+
+    function avgNoise(pts) {
+      let sum = 0; let count = 0;
+      for (const p of pts) {
+        const dist = distToLine(p[0], p[1], startLat, startLng, endLat, endLng);
+        if (dist < 0.002) sum += rand(65, 80);
+        else if (dist < 0.006) sum += rand(50, 65);
+        else sum += rand(35, 50);
+        count++;
+      }
+      return Math.round(sum / count);
+    }
+
+    const fastestDist = haversine(fastestPath);
+    const balancedDist = haversine(balancedPath);
+    const quietestDist = haversine(quietestPath);
+
+    const fastestTime = Math.round(fastestDist / 22 * 60);
+    const balancedTime = Math.round(balancedDist / 14 * 60);
+    const quietestTime = Math.round(quietestDist / 9 * 60);
+
+    const fastestNoise = avgNoise(fastestPath);
+    const balancedNoise = avgNoise(balancedPath);
+    const quietestNoise = avgNoise(quietestPath);
+
+    const routeTypes = {
+      fastest: {
+        coords: fastestPath,
+        noise: fastestNoise, time: fastestTime, dist: fastestDist,
+        score: Math.round(100 - (fastestNoise - 30) / 80 * 100),
+        pct: 100,
+        color: '#EF4444', label: 'Fastest Route',
+      },
+      balanced: {
+        coords: balancedPath,
+        noise: balancedNoise, time: balancedTime, dist: balancedDist,
+        score: Math.round(100 - (balancedNoise - 30) / 80 * 100),
+        pct: Math.round((fastestTime / balancedTime) * 100),
+        color: '#F59E0B', label: 'Balanced Route',
+      },
+      quietest: {
+        coords: quietestPath,
+        noise: quietestNoise, time: quietestTime, dist: quietestDist,
+        score: Math.round(100 - (quietestNoise - 30) / 80 * 100),
+        pct: Math.round((fastestTime / quietestTime) * 100),
+        color: '#10B981', label: 'Quietest Route',
+      },
+    };
+    return { routeTypes, startLat, startLng, endLat, endLng };
   }
 
   function drawGauge(canvas, value) {
@@ -201,8 +786,8 @@
 
   function calculateBuildingNoise(buildingType, floors, proximity) {
     const base = { residential: 55, school: 50, hospital: 48, office: 58, library: 38 }[buildingType] || 50;
-    const prox = { 'Direct (0–10m)': 20, 'Near (10–50m)': 10, 'Moderate (50–200m)': 3, 'Far (200m+)': -5 }[proximity] || 10;
-    const flr = { '1–3': 0, '4–8': 2, '9–15': 5, '16+': 8 }[floors] || 0;
+    const prox = { 'Direct (0-10m)': 20, 'Near (10-50m)': 10, 'Moderate (50-200m)': 3, 'Far (200m+)': -5 }[proximity] || 10;
+    const flr = { '1-3': 0, '4-8': 2, '9-15': 5, '16+': 8 }[floors] || 0;
     return clamp(Math.round(base + prox + flr + rand(-3, 3)), 20, 140);
   }
 
@@ -247,20 +832,52 @@
     }));
   }
 
-  let routeMapInstance = null;
-  let routeLayers = [];
-
-  const NYC_PRESETS = {
-    'Central Park': [40.7829, -73.9654],
-    'Times Square, NYC': [40.7580, -73.9855],
-    'Grand Central Terminal': [40.7527, -73.9772],
-    'Brooklyn Bridge': [40.7061, -73.9969],
-    'Union Square': [40.7359, -73.9911],
-    'Wall Street': [40.7074, -74.0113],
-    'Madison Square Garden': [40.7505, -73.9934],
-    'One World Trade Center': [40.7127, -74.0134],
-    'current': null,
+  const state = {
+    currentSection: 'dashboard',
+    currentNoise: 67,
+    hourlyData: [],
+    sourceData: [],
+    weeklyData: [],
+    hotspots: [],
+    forecastPeriod: 'today',
+    selectedRoute: 'balanced',
+    buildingType: 'school',
+    buildingFloors: '4-8',
+    buildingProximity: 'Near (10-50m)',
+    navMode: 'scroll',
+    sliderIndex: 0,
+    lat: 40.7128,
+    lng: -74.0060,
+    locationName: 'NYC Case Study',
+    usingMic: false,
+    micNoise: null,
+    audioCtx: null,
+    analyser: null,
+    micStream: null,
+    locationSet: false,
+    micSamples: [],
+    trendData: [],
+    recordingPhase: null,
+    recordingStartTime: null,
+    recordingSecond: 0,
+    recordingStopping: false,
+    micAnimFrame: null,
+    lastFreqData: null,
+    reports: [],
+    currentUser: null,
+    authMode: 'login',
+    communityPosts: [],
+    caseStudy: null,
+    baseNoise: 67,
   };
+
+  let gaugeCanvas, gaugeValue;
+  let sourceChartInstance, hourlyChartInstance, forecastChartInstance;
+  let mapInstance;
+  let updateInterval;
+  let userMarker, userRouteMarker;
+  const initializedSections = new Set();
+  let currentSensitiveZones = [];
 
   function initRouteMap() {
     const container = document.getElementById('routeMiniMap');
@@ -280,42 +897,6 @@
     routeLayers = [];
   }
 
-  function generateDynamicRoutes(startLat, startLng, endLat, endLng) {
-    const dx = endLng - startLng;
-    const dy = endLat - startLat;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const steps = Math.max(6, Math.round(dist * 150));
-    const perKm = (dist * 111) / 3;
-    const baseDist = Math.round(perKm * 10) / 10;
-
-    function routeCoords(offsetFactor, noiseFactor) {
-      const coords = [];
-      for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        const lat = startLat + dy * t + (noiseFactor || 0.001) * Math.sin(t * Math.PI * (offsetFactor || 1)) * dist * 0.5;
-        const lng = startLng + dx * t + (noiseFactor || 0.001) * Math.cos(t * Math.PI * (offsetFactor || 1) * 0.7) * dist * 0.5;
-        coords.push([lat, lng]);
-      }
-      return coords;
-    }
-
-    const routeTypes = {
-      fastest: {
-        coords: routeCoords(0.6, 0.0003),
-        noise: Math.round(65 + rand(3, 8)), time: Math.round(baseDist / 14 * 60), dist: baseDist, score: 60, pct: 100, color: '#EF4444', label: 'Fastest Route',
-      },
-      balanced: {
-        coords: routeCoords(1.2, 0.0006),
-        noise: Math.round(52 + rand(3, 6)), time: Math.round(baseDist / 10 * 60), dist: Math.round(baseDist * 1.15 * 10) / 10, score: 78, pct: 72, color: '#F59E0B', label: 'Balanced Route',
-      },
-      quietest: {
-        coords: routeCoords(2.0, 0.001),
-        noise: Math.round(35 + rand(3, 6)), time: Math.round(baseDist / 7 * 60), dist: Math.round(baseDist * 1.4 * 10) / 10, score: 92, pct: 52, color: '#10B981', label: 'Quietest Route',
-      },
-    };
-    return { routeTypes, startLat, startLng, endLat, endLng };
-  }
-
   function recalculateRoutes() {
     if (!routeMapInstance) initRouteMap();
     if (!routeMapInstance) return;
@@ -325,15 +906,18 @@
     const endVal = document.getElementById('routeEnd').value;
     if (!endVal) { alert('Please select a destination'); return; }
 
+    const cs = state.caseStudy || CASE_STUDIES['United States'];
+    const presets = cs.landmarks || {};
+
     let startLat = state.lat;
     let startLng = state.lng;
     if (startVal !== 'current') {
-      const c = NYC_PRESETS[startVal];
+      const c = presets[startVal];
       if (c) { startLat = c[0]; startLng = c[1]; }
     }
-    if (!startLat || !startLng) { startLat = 40.7580; startLng = -73.9855; }
+    if (!startLat || !startLng) { startLat = cs.lat; startLng = cs.lng; }
 
-    const endCoords = NYC_PRESETS[endVal];
+    const endCoords = presets[endVal];
     if (!endCoords) { alert('Unknown destination'); return; }
 
     const startName = startVal === 'current' ? (state.locationName || 'Current Location') : startVal;
@@ -360,7 +944,7 @@
       const polyline = L.polyline(route.coords, {
         color: route.color, weight: 4, opacity: 0.8,
       }).addTo(routeMapInstance);
-      polyline.bindPopup('<b>' + route.label + '</b><br>' + route.noise + ' dB · ' + route.dist + ' km · ' + route.time + ' min');
+      polyline.bindPopup('<b>' + route.label + '</b><br>' + route.noise + ' dB - ' + route.dist + ' km - ' + route.time + ' min');
       routeLayers.push(polyline);
       route.coords.forEach(c => allCoords.push(c));
     });
@@ -368,60 +952,133 @@
     routeMapInstance.fitBounds(L.latLngBounds(allCoords), { padding: [30, 30] });
   }
 
-  const state = {
-    currentSection: 'dashboard',
-    currentNoise: 67,
-    hourlyData: [],
-    sourceData: [],
-    weeklyData: [],
-    hotspots: [],
-    forecastPeriod: 'today',
-    selectedRoute: 'balanced',
-    buildingType: 'school',
-    buildingFloors: '4–8',
-    buildingProximity: 'Near (10–50m)',
-    navMode: 'scroll',
-    sliderIndex: 0,
-    lat: 40.7128,
-    lng: -74.0060,
-    locationName: 'NYC Case Study',
-    usingMic: false,
-    micNoise: null,
-    audioCtx: null,
-    analyser: null,
-    micStream: null,
-    locationSet: false,
-    micSamples: [],
-    trendData: [],
-    sourceData: [],
-    recordingPhase: null,
-    recordingStartTime: null,
-    recordingSecond: 0,
-    recordingStopping: false,
-    micAnimFrame: null,
-    lastFreqData: null,
-    reports: [],
-    currentUser: null,
-    authMode: 'login',
-    communityPosts: [],
-  };
+  function applyCaseStudy(cs) {
+    state.caseStudy = cs;
+    state.lat = cs.lat;
+    state.lng = cs.lng;
+    state.locationName = cs.name;
+    state.baseNoise = cs.baseNoise;
+    state.currentNoise = generateNoiseProfile(cs.baseNoise, 3);
+    state.hourlyData = generateHourlyData(cs.baseNoise);
+    state.weeklyData = generateWeeklyData(cs.baseNoise);
+    state.hotspots = generateMapHotspots(cs);
+    currentSensitiveZones = JSON.parse(JSON.stringify(cs.sensitiveZones || []));
+    state.zoneGroups = cs.zoneGroups || {};
 
-  let gaugeCanvas, gaugeValue;
-  let sourceChartInstance, hourlyChartInstance, forecastChartInstance;
-  let mapInstance;
-  let updateInterval;
-  let userMarker, userRouteMarker;
-  const initializedSections = new Set();
+    const name = document.getElementById('locationName');
+    const dash = document.getElementById('dashLocation');
+    const mapLoc = document.getElementById('mapLocation');
+    const fcLoc = document.getElementById('forecastLocation');
+    const sidebarOrg = document.getElementById('sidebarOrg');
+    const orgSubtitle = document.getElementById('orgSubtitle');
+    const label = cs.name;
+    if (name) name.textContent = label;
+    if (dash) dash.textContent = label;
+    if (mapLoc) mapLoc.textContent = label;
+    if (fcLoc) fcLoc.textContent = label;
+    if (sidebarOrg) sidebarOrg.textContent = label;
+    if (orgSubtitle) orgSubtitle.textContent = 'Noise Intelligence for ' + cs.name;
+
+    updateRoutePresets(cs);
+
+    if (mapInstance) {
+      mapInstance.setView([cs.lat, cs.lng], 13);
+    }
+    if (routeMapInstance) {
+      routeMapInstance.setView([cs.lat, cs.lng], 14);
+    }
+
+    if (document.getElementById('noiseMap')) {
+      if (mapInstance) {
+        const layersToRemove = [];
+        mapInstance.eachLayer(layer => {
+          if (layer.options && typeof layer.getLatLng === 'function') {
+            if (layer.options.radius || layer.options.fillColor) {
+              layersToRemove.push(layer);
+            }
+          }
+        });
+        layersToRemove.forEach(l => mapInstance.removeLayer(l));
+
+        state.hotspots.forEach(h => {
+          const radius = 50 + h.intensity * 150;
+          const color = h.intensity > 0.7 ? COLORS.red : h.intensity > 0.5 ? COLORS.orange : h.intensity > 0.3 ? COLORS.amber : COLORS.emerald;
+          L.circle([h.lat, h.lng], {
+            radius, color, fillColor: color, fillOpacity: 0.12 + h.intensity * 0.25, weight: 1, opacity: 0.4,
+          }).addTo(mapInstance).bindPopup('<b>' + h.name + '</b><br>Noise: ' + h.noise + ' dB');
+
+          L.circleMarker([h.lat, h.lng], {
+            radius: 3 + h.intensity * 4, color, fillColor: color, fillOpacity: 0.8, weight: 1,
+          }).addTo(mapInstance);
+        });
+      }
+      const hotEl = document.getElementById('mapHotspots');
+      if (hotEl) hotEl.textContent = state.hotspots.length;
+      const maxEl = document.getElementById('mapMax');
+      if (maxEl) maxEl.textContent = Math.max(...state.hotspots.map(h => h.noise)) + ' dB';
+    }
+
+    renderSensitiveZones();
+    renderDashboard();
+    renderForecast();
+  }
+
+  function updateRoutePresets(cs) {
+    const landmarks = cs.landmarks || {};
+    const keys = Object.keys(landmarks);
+
+    const routeStart = document.getElementById('routeStart');
+    const routeEnd = document.getElementById('routeEnd');
+    if (routeStart) {
+      routeStart.innerHTML = '<option value="current">📍 Current Location</option>';
+      keys.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = k;
+        routeStart.appendChild(opt);
+      });
+    }
+    if (routeEnd) {
+      routeEnd.innerHTML = '<option value="">Choose destination...</option>';
+      keys.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = k;
+        routeEnd.appendChild(opt);
+      });
+    }
+  }
 
   function init() {
     gaugeCanvas = document.getElementById('noiseGauge');
     gaugeValue = document.getElementById('gaugeValue');
 
-    state.currentNoise = randInt(58, 72);
-    state.hourlyData = generateHourlyData(state.currentNoise);
-    state.sourceData = generateSourceDistribution();
-    state.weeklyData = generateWeeklyData(state.currentNoise);
-    state.hotspots = generateMapHotspots();
+    const savedUser = getCurrentUser();
+    state.currentUser = savedUser;
+    if (savedUser && savedUser.country) {
+      const cs = getCaseStudy(savedUser.country);
+      state.caseStudy = cs;
+      state.lat = cs.lat;
+      state.lng = cs.lng;
+      state.locationName = cs.name;
+      state.baseNoise = cs.baseNoise;
+      state.currentNoise = generateNoiseProfile(cs.baseNoise, 3);
+      state.hourlyData = generateHourlyData(cs.baseNoise);
+      state.weeklyData = generateWeeklyData(cs.baseNoise);
+      state.hotspots = generateMapHotspots(cs);
+      currentSensitiveZones = JSON.parse(JSON.stringify(cs.sensitiveZones || []));
+      state.zoneGroups = cs.zoneGroups || {};
+    } else {
+      const defaultCs = CASE_STUDIES['United States'];
+      state.caseStudy = defaultCs;
+      state.currentNoise = generateNoiseProfile(defaultCs.baseNoise, 3);
+      state.hourlyData = generateHourlyData(defaultCs.baseNoise);
+      state.sourceData = generateSourceDistribution(defaultCs.baseNoise);
+      state.weeklyData = generateWeeklyData(defaultCs.baseNoise);
+      state.hotspots = generateMapHotspots(defaultCs);
+      currentSensitiveZones = JSON.parse(JSON.stringify(defaultCs.sensitiveZones || []));
+      state.zoneGroups = defaultCs.zoneGroups || {};
+    }
 
     initDarkToggle();
     initNavigation();
@@ -680,7 +1337,6 @@
     const dash = document.getElementById('dashLocation');
     const mapLoc = document.getElementById('mapLocation');
     const fcLoc = document.getElementById('forecastLocation');
-    const routeStart = document.getElementById('routeStart');
     const label = lat ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : 'your location';
     if (name) name.textContent = label;
     if (dash) dash.textContent = label;
@@ -702,7 +1358,6 @@
 
   function locateUser() {
     if (!navigator.geolocation) {
-      setDefaultLocation();
       return;
     }
 
@@ -717,9 +1372,8 @@
     }
 
     function error() {
-      setDefaultLocation();
       const name = document.getElementById('locationName');
-      if (name && name.textContent === 'NYC Case Study') {
+      if (name && name.textContent === (state.locationName || 'NYC Case Study')) {
         fetch('https://ipapi.co/json/')
           .then(r => r.json())
           .then(data => {
@@ -733,13 +1387,6 @@
           })
           .catch(() => {});
       }
-    }
-
-    function setDefaultLocation() {
-      state.lat = 40.7128;
-      state.lng = -74.0060;
-      state.locationName = 'NYC Case Study';
-      updateLocationUI();
     }
 
     function updateMapMarkers() {
@@ -771,7 +1418,13 @@
     }, 12000);
 
     setTimeout(() => {
-      if (!state.locationSet) setDefaultLocation();
+      if (!state.locationSet) {
+        const cs = state.caseStudy || CASE_STUDIES['United States'];
+        state.lat = cs.lat;
+        state.lng = cs.lng;
+        state.locationName = cs.name;
+        updateLocationUI();
+      }
     }, 20000);
   }
 
@@ -809,6 +1462,7 @@
         state.recordingStartTime = Date.now();
         state.recordingSecond = 0;
         state.recordingStopping = false;
+        state.lastAvg = 0;
 
         btn.dataset.recording = 'true';
         btn.classList.add('recording');
@@ -832,9 +1486,18 @@
           const db = clamp(Math.round(30 + normalized * 90), 20, 140);
           state.currentNoise = db;
           state.micSamples.push(db);
+
+          state.trendData.push({ time: (state.trendData.length + 1) + 'f', noise: db });
+          if (state.trendData.length > 250) state.trendData = state.trendData.slice(-250);
+
           gaugeValue.textContent = db;
           updateQuickStats(db);
           drawGauge(gaugeCanvas, db);
+
+          if (state.lastFreqData) {
+            state.sourceData = generateSourceFromFreq(state.lastFreqData);
+            renderSourceChart();
+          }
 
           const elapsed = Math.floor((Date.now() - state.recordingStartTime) / 1000);
           if (elapsed > state.recordingSecond) {
@@ -842,10 +1505,6 @@
             const sec = Math.min(elapsed, 15);
             setLabel('Recording ' + sec + '/15s');
             timerEl.textContent = sec + 's / 15s';
-            if (sec % 3 === 0 || sec === 1) {
-              state.trendData.push({ time: sec + 's', noise: db });
-              if (state.trendData.length > 15) state.trendData.shift();
-            }
             if (sec >= 15) {
               finalizeRecording();
               return;
@@ -909,8 +1568,8 @@
     btn.querySelector('i').className = 'fas fa-microphone';
 
     state.currentNoise = finalAvg;
-    state.sourceData = state.lastFreqData ? generateSourceFromFreq(state.lastFreqData) : generateSourceDistribution();
-    state.trendData = state.trendData.slice(-15);
+    state.sourceData = state.lastFreqData ? generateSourceFromFreq(state.lastFreqData) : generateSourceDistribution(state.baseNoise);
+    state.trendData = state.trendData.slice(-250);
 
     gaugeValue.textContent = finalAvg;
     drawGauge(gaugeCanvas, finalAvg);
@@ -968,12 +1627,66 @@
     }));
   }
 
+  let micSamplesPeak = -Infinity;
+  let micSamplesLow = Infinity;
+  let micSamplesSum = 0;
+  let micSamplesCount = 0;
+  let micAlertsCount = 0;
+
   function updateQuickStats(db) {
-    const peak = Math.max(db, parseInt(document.getElementById('statPeak').textContent) || db);
-    const low = Math.min(db, parseInt(document.getElementById('statLow').textContent) || db);
-    document.getElementById('statPeak').textContent = peak;
-    document.getElementById('statLow').textContent = low;
-    document.getElementById('statAvg').textContent = db;
+    if (state.usingMic) {
+      if (db > micSamplesPeak) micSamplesPeak = db;
+      if (db < micSamplesLow) micSamplesLow = db;
+      micSamplesSum += db;
+      micSamplesCount++;
+      if (db > 70) micAlertsCount++;
+
+      const peakEl = document.getElementById('statPeak');
+      const lowEl = document.getElementById('statLow');
+      const avgEl = document.getElementById('statAvg');
+      const alertEl = document.getElementById('statAlerts');
+      if (peakEl) peakEl.textContent = micSamplesPeak;
+      if (lowEl) lowEl.textContent = micSamplesLow;
+      if (avgEl) avgEl.textContent = Math.round(micSamplesSum / micSamplesCount);
+
+      const statAlertsParent = alertEl?.closest('.stat-item');
+      if (statAlertsParent) {
+        const label = statAlertsParent.querySelector('.stat-label');
+        if (label) label.textContent = 'Sample Count';
+      }
+      if (alertEl) alertEl.textContent = micSamplesCount;
+    } else {
+      micSamplesPeak = -Infinity;
+      micSamplesLow = Infinity;
+      micSamplesSum = 0;
+      micSamplesCount = 0;
+      micAlertsCount = 0;
+
+      const hour = new Date().getHours();
+      const nearHours = state.hourlyData.filter(d => Math.abs(d.hour - hour) <= 1);
+      const peak = nearHours.length > 0 ? Math.max(...nearHours.map(d => d.noise)) : 0;
+      const low = nearHours.length > 0 ? Math.min(...nearHours.map(d => d.noise)) : 0;
+      const avg = state.hourlyData.length > 0
+        ? Math.round(state.hourlyData.reduce((a, d) => a + d.noise, 0) / state.hourlyData.length)
+        : 0;
+      const alerts = state.hourlyData.filter(d => d.noise > 70).length;
+
+      const peakEl = document.getElementById('statPeak');
+      const lowEl = document.getElementById('statLow');
+      const avgEl = document.getElementById('statAvg');
+      const alertEl = document.getElementById('statAlerts');
+      if (peakEl) peakEl.textContent = peak || '--';
+      if (lowEl) lowEl.textContent = low || '--';
+      if (avgEl) avgEl.textContent = avg || '--';
+
+      const statAlertsParent = alertEl?.closest('.stat-item');
+      if (statAlertsParent) {
+        const label = statAlertsParent.querySelector('.stat-label');
+        if (label) label.textContent = 'Active Alerts';
+      }
+      if (alertEl) alertEl.textContent = alerts || 0;
+    }
+
     const riskIdx = getRiskIndex(db);
     document.querySelectorAll('.risk-ring-segment').forEach((seg, i) => {
       seg.classList.toggle('active', i <= riskIdx);
@@ -982,11 +1695,10 @@
     const colorMap = [COLORS.emerald, COLORS.amber, COLORS.orange, COLORS.red];
     const iconMap = ['fa-volume-low', 'fa-volume-low', 'fa-volume-high', 'fa-volume-high'];
     const descs = ['Safe levels', 'Caution in traffic areas', 'Health risk on exposure', 'Immediate action needed'];
-    document.getElementById('riskStatus').innerHTML =
-      '<div class="risk-icon"><i class="fas ' + iconMap[riskIdx] + '" style="color:' + colorMap[riskIdx] + '"></i></div>' +
-      '<div class="risk-label" style="color:' + colorMap[riskIdx] + '">' + risk.label + '</div>' +
-      '<div class="risk-desc">' + descs[riskIdx] + '</div>';
-    document.getElementById('statAlerts').textContent = db > 70 ? Math.floor(db / 10) - 5 : db > 60 ? 2 : db > 50 ? 1 : 0;
+    const riskEl = document.getElementById('riskStatus');
+    if (riskEl) {
+      riskEl.innerHTML = '<div class="risk-icon"><i class="fas ' + iconMap[riskIdx] + '" style="color:' + colorMap[riskIdx] + '"></i></div><div class="risk-label" style="color:' + colorMap[riskIdx] + '">' + risk.label + '</div><div class="risk-desc">' + descs[riskIdx] + '</div>';
+    }
   }
 
   function renderAlerts(db) {
@@ -1058,18 +1770,27 @@
       'Immediate action recommended',
     ];
 
-    document.getElementById('riskStatus').innerHTML = `
-      <div class="risk-icon"><i class="fas ${iconMap[riskIdx]}" style="color:${colorMap[riskIdx]}"></i></div>
-      <div class="risk-label" style="color:${colorMap[riskIdx]}">${risk.label}</div>
-      <div class="risk-desc">${descs[riskIdx]}</div>
-    `;
+    const riskEl = document.getElementById('riskStatus');
+    if (riskEl) {
+      riskEl.innerHTML = '<div class="risk-icon"><i class="fas ' + iconMap[riskIdx] + '" style="color:' + colorMap[riskIdx] + '"></i></div><div class="risk-label" style="color:' + colorMap[riskIdx] + '">' + risk.label + '</div><div class="risk-desc">' + descs[riskIdx] + '</div>';
+    }
 
-    const peak = Math.max(...state.hourlyData.map(d => d.noise));
-    const low = Math.min(...state.hourlyData.map(d => d.noise));
-    const avg = Math.round(state.hourlyData.reduce((a, d) => a + d.noise, 0) / state.hourlyData.length);
-    document.getElementById('statPeak').textContent = peak;
-    document.getElementById('statLow').textContent = low;
-    document.getElementById('statAvg').textContent = avg;
+    updateQuickStats(noise);
+
+    const cs = state.caseStudy || CASE_STUDIES['United States'];
+    const popScale = Math.min(cs.population / 8400000, 2);
+    const trees = Math.round(1240 * popScale);
+    const people = Math.round(2840 * popScale);
+    const allStatValues = document.querySelectorAll('.stat-item .stat-value');
+    if (allStatValues.length >= 8) {
+      allStatValues[6].textContent = trees.toLocaleString();
+      allStatValues[7].textContent = people.toLocaleString();
+    }
+    const allStatLabels = document.querySelectorAll('.stat-item .stat-label');
+    if (allStatLabels.length >= 8) {
+      allStatLabels[6].textContent = 'Trees Planted';
+      allStatLabels[7].textContent = 'People Protected';
+    }
   }
 
   function renderSourceChart() {
@@ -1077,7 +1798,9 @@
     if (!ctx) return;
     if (sourceChartInstance) sourceChartInstance.destroy();
 
-    const data = state.sourceData;
+    const data = state.sourceData && state.sourceData.length > 0 ? state.sourceData : generateSourceDistribution(state.baseNoise);
+    state.sourceData = data;
+
     sourceChartInstance = new Chart(ctx, {
       type: 'doughnut',
       data: {
@@ -1103,26 +1826,47 @@
       },
     });
 
-    document.getElementById('sourceLegend').innerHTML = data.map(d =>
-      `<span><span class="legend-color" style="background:${d.color}"></span> ${d.label} ${d.pct}%</span>`
-    ).join('');
+    const legendEl = document.getElementById('sourceLegend');
+    if (legendEl) {
+      legendEl.innerHTML = data.map(d =>
+        `<span><span class="legend-color" style="background:${d.color}"></span> ${d.label} ${d.pct}%</span>`
+      ).join('');
+    }
   }
 
   function renderTrendChart() {
     const ctx = document.getElementById('hourlyChart')?.getContext('2d');
     if (!ctx) return;
     if (hourlyChartInstance) hourlyChartInstance.destroy();
-    const data = state.trendData && state.trendData.length > 0 ? state.trendData : state.hourlyData.slice(0, 15);
+
+    let data;
+    let labels;
+
+    if (state.usingMic && state.trendData.length > 0) {
+      data = state.trendData;
+      labels = data.map((d, i) => {
+        if (i % 30 === 0) return (i / 60).toFixed(1) + 's';
+        return '';
+      });
+    } else {
+      const displayData = state.trendData && state.trendData.length > 0 ? state.trendData : state.hourlyData.slice(0, 15);
+      data = displayData;
+      labels = data.map((d, i) => {
+        if (d.time) return d.time;
+        return (i + 1) + 's';
+      });
+    }
+
     hourlyChartInstance = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: data.map((d, i) => (i + 1) + 's'),
+        labels: labels,
         datasets: [{
           data: data.map(d => d.noise),
           borderColor: '#10b981',
           backgroundColor: 'rgba(16,185,129,0.15)',
           pointBackgroundColor: '#10b981',
-          pointRadius: data.length > 1 ? 2 : 0,
+          pointRadius: 0,
           borderWidth: 2,
           fill: true,
         }],
@@ -1143,8 +1887,9 @@
     if (!ctx) return;
     if (forecastChartInstance) forecastChartInstance.destroy();
 
+    const baseNoise = state.baseNoise || 67;
     const hours = state.forecastPeriod === 'today' ? state.hourlyData
-      : generateHourlyData(state.currentNoise + rand(-3, 3));
+      : generateHourlyData(baseNoise + rand(-3, 3));
 
     const values = hours.map(h => h.noise);
     const getColor = (v) => {
@@ -1204,8 +1949,9 @@
   function renderForecastTimeline() {
     const container = document.getElementById('forecastTimeline');
     if (!container) return;
+    const baseNoise = state.baseNoise || 67;
     const hours = state.forecastPeriod === 'today' ? state.hourlyData
-      : generateHourlyData(state.currentNoise + rand(-3, 3));
+      : generateHourlyData(baseNoise + rand(-3, 3));
 
     container.innerHTML = hours.map(h => {
       const risk = getRiskLevel(h.noise);
@@ -1246,8 +1992,10 @@
     const container = document.getElementById('noiseMap');
     if (!container || typeof L === 'undefined') return;
 
+    const cs = state.caseStudy || CASE_STUDIES['United States'];
+
     mapInstance = L.map('noiseMap', {
-      center: [state.lat || 40.7128, state.lng || -74.0060],
+      center: [cs.lat, cs.lng],
       zoom: 13,
       zoomControl: true,
     });
@@ -1262,35 +2010,20 @@
       const radius = 50 + h.intensity * 150;
       const color = h.intensity > 0.7 ? COLORS.red : h.intensity > 0.5 ? COLORS.orange : h.intensity > 0.3 ? COLORS.amber : COLORS.emerald;
       L.circle([h.lat, h.lng], {
-        radius,
-        color,
-        fillColor: color,
-        fillOpacity: 0.12 + h.intensity * 0.25,
-        weight: 1,
-        opacity: 0.4,
+        radius, color, fillColor: color, fillOpacity: 0.12 + h.intensity * 0.25, weight: 1, opacity: 0.4,
       }).addTo(mapInstance).bindPopup(`<b>${h.name}</b><br>Noise: ${h.noise} dB`);
 
       L.circleMarker([h.lat, h.lng], {
-        radius: 3 + h.intensity * 4,
-        color,
-        fillColor: color,
-        fillOpacity: 0.8,
-        weight: 1,
+        radius: 3 + h.intensity * 4, color, fillColor: color, fillOpacity: 0.8, weight: 1,
       }).addTo(mapInstance);
     });
 
-    const sensitiveZones = [
-      { name: 'PS 321 School', lat: 40.718, lng: -73.995, type: 'school', iconColor: '#06B6D4', icon: 'fa-school' },
-      { name: 'NYU Langone Hospital', lat: 40.742, lng: -73.974, type: 'hospital', iconColor: '#EF4444', icon: 'fa-hospital' },
-      { name: 'NY Public Library', lat: 40.752, lng: -73.982, type: 'library', iconColor: '#F59E0B', icon: 'fa-book' },
-      { name: 'Columbia University', lat: 40.807, lng: -73.962, type: 'school', iconColor: '#06B6D4', icon: 'fa-school' },
-      { name: 'Mount Sinai Hospital', lat: 40.790, lng: -73.952, type: 'hospital', iconColor: '#EF4444', icon: 'fa-hospital' },
-      { name: 'Brooklyn Public Library', lat: 40.672, lng: -73.968, type: 'library', iconColor: '#F59E0B', icon: 'fa-book' },
-    ];
-
-    sensitiveZones.forEach(z => {
+    const sz = currentSensitiveZones.length > 0 ? currentSensitiveZones : cs.sensitiveZones || [];
+    sz.forEach(z => {
+      const icons = { school: { icon: 'fa-school', color: '#06B6D4' }, hospital: { icon: 'fa-hospital', color: '#EF4444' }, library: { icon: 'fa-book', color: '#F59E0B' } };
+      const zi = icons[z.type] || { icon: 'fa-building', color: '#10B981' };
       const markerIcon = L.divIcon({
-        html: `<i class="fas ${z.icon}" style="color:${z.iconColor};font-size:18px;text-shadow:0 0 8px ${z.iconColor}44"></i>`,
+        html: `<i class="fas ${zi.icon}" style="color:${zi.color};font-size:18px;text-shadow:0 0 8px ${zi.color}44"></i>`,
         className: '',
         iconSize: [24, 24],
         iconAnchor: [12, 12],
@@ -1510,6 +2243,8 @@
         closeAuth();
         renderUserBadge();
         renderCommunityPosts();
+        const cs = getCaseStudy(country);
+        applyCaseStudy(cs);
       } else {
         const users = getUsers();
         const u = users[username];
@@ -1523,6 +2258,8 @@
         closeAuth();
         renderUserBadge();
         renderCommunityPosts();
+        const cs = getCaseStudy(u.country);
+        applyCaseStudy(cs);
       }
     });
 
@@ -1540,6 +2277,8 @@
     saveCurrentUser(null);
     state.currentUser = null;
     renderUserBadge();
+    const defaultCs = CASE_STUDIES['United States'];
+    applyCaseStudy(defaultCs);
   }
 
   function renderUserBadge() {
@@ -1591,50 +2330,143 @@
     if (!container) return;
 
     state.currentUser = getCurrentUser();
-    state.communityPosts = [
-      { id: 1, user: 'QuietNYC', avatar: 'Q', country: 'United States', time: '2h ago', title: 'Best quiet spots in NYC', content: 'I\'ve been mapping the quietest corners of Manhattan. The Roof Garden at the Met and Greenacre Park consistently measure under 50 dB even at noon.', votes: 24, comments: 8 },
-      { id: 2, user: 'BrooklynNoiseWatch', avatar: 'B', country: 'United States', time: '5h ago', title: 'Construction noise complaint — Atlantic Ave', content: 'Jackhammering since 6 AM at Atlantic Ave development site. Readings hitting 92 dB near the fence. Past the legal limit of 85 dB.', votes: 42, comments: 15 },
-      { id: 3, user: 'GreenBarrierFan', avatar: 'G', country: 'Canada', time: '1d ago', title: 'Green barrier success story — Hudson Yards', content: 'Mixed vegetation barrier along the High Line extension has reduced street-level noise by 7 dB! Before: 74 dB, After: 67 dB.', votes: 31, comments: 12 },
-      { id: 4, user: 'WeekendWarrior', avatar: 'W', country: 'United Kingdom', time: '2d ago', title: 'Weekend noise levels are surprisingly low', content: 'Sunday mornings between 6-9 AM average 48 dB across most residential zones. 15 dB lower than weekday averages.', votes: 18, comments: 6 },
-      { id: 5, user: 'DataNoiseLab', avatar: 'D', country: 'Germany', time: '3d ago', title: 'Traffic diversion impact on noise — FDR Drive', content: 'After last month\'s FDR Drive lane closure, noise levels along the East River Promenade dropped by 9 dB during peak hours.', votes: 27, comments: 10 },
+
+    const storedPosts = loadCommunityPosts();
+    const seedPosts = [
+      { id: 'seed-1', user: 'QuietNYC', country: 'United States', time: '2h ago', title: 'Best quiet spots in NYC', content: 'I have been mapping the quietest corners of Manhattan. The Roof Garden at the Met and Greenacre Park consistently measure under 50 dB even at noon.', votes: 24, comments: 8 },
+      { id: 'seed-2', user: 'BrooklynNoiseWatch', country: 'United States', time: '5h ago', title: 'Construction noise complaint', content: 'Jackhammering since 6 AM at Atlantic Ave development site. Readings hitting 92 dB near the fence.', votes: 42, comments: 15 },
+      { id: 'seed-3', user: 'GreenBarrierFan', country: 'Canada', time: '1d ago', title: 'Green barrier success story', content: 'Mixed vegetation barrier along the High Line extension has reduced street-level noise by 7 dB!', votes: 31, comments: 12 },
+      { id: 'seed-4', user: 'WeekendWarrior', country: 'United Kingdom', time: '2d ago', title: 'Weekend noise levels are surprisingly low', content: 'Sunday mornings between 6-9 AM average 48 dB across most residential zones.', votes: 18, comments: 6 },
+      { id: 'seed-5', user: 'DataNoiseLab', country: 'Germany', time: '3d ago', title: 'Traffic diversion impact on noise', content: 'After the FDR Drive lane closure, noise levels along the East River Promenade dropped by 9 dB during peak hours.', votes: 27, comments: 10 },
     ];
+
+    const allPosts = [...seedPosts, ...storedPosts];
+    allPosts.sort((a, b) => {
+      const timeOrder = { 'now': 0, 'Just now': 0, '1m ago': 1, '2h ago': 2, '5h ago': 3, '1d ago': 4, '2d ago': 5, '3d ago': 6 };
+      return (timeOrder[a.time] || 99) - (timeOrder[b.time] || 99);
+    });
+    state.communityPosts = allPosts;
+
+    const newPostHtml = `
+      <div class="card new-post-card">
+        <div class="card-header"><span>New Post</span></div>
+        <div class="new-post-form">
+          <div class="form-group" style="display:flex;gap:10px;margin-bottom:8px">
+            <input type="text" id="postUsername" class="form-input" placeholder="Your name" style="flex:1" value="${state.currentUser ? state.currentUser.username : 'Guest'}" />
+            <span style="padding:8px 0;color:var(--text-muted);font-size:13px">${state.currentUser ? getCountryFlag(state.currentUser.country) + ' ' + state.currentUser.country : '🌍'}</span>
+          </div>
+          <div class="form-group">
+            <input type="text" id="postTitle" class="form-input" placeholder="Post title..." />
+          </div>
+          <div class="form-group">
+            <textarea id="postContent" class="form-input form-textarea" rows="3" placeholder="Share your noise experience..."></textarea>
+          </div>
+          <button class="report-submit-btn" id="postSubmitBtn"><i class="fas fa-paper-plane"></i> Post</button>
+        </div>
+      </div>
+    `;
+
+    container.insertAdjacentHTML('afterbegin', newPostHtml);
+
+    document.getElementById('postSubmitBtn')?.addEventListener('click', () => {
+      const username = document.getElementById('postUsername').value.trim() || 'Guest';
+      const title = document.getElementById('postTitle').value.trim();
+      const content = document.getElementById('postContent').value.trim();
+      if (!title || !content) return;
+
+      const userCountry = state.currentUser ? state.currentUser.country : '';
+      let detectedCountry = userCountry;
+      if (!detectedCountry && typeof Intl !== 'undefined') {
+        try {
+          const locale = Intl.DateTimeFormat().resolvedOptions().locale;
+          detectedCountry = locale.split('-')[1] || '';
+        } catch(e) {}
+      }
+
+      const newPost = {
+        id: 'post-' + Date.now(),
+        user: username,
+        country: userCountry || detectedCountry || 'United States',
+        time: 'Just now',
+        title: title,
+        content: content,
+        votes: 0,
+        comments: 0,
+      };
+      state.communityPosts.unshift(newPost);
+      saveCommunityPost(newPost);
+      document.getElementById('postTitle').value = '';
+      document.getElementById('postContent').value = '';
+      renderCommunityPosts();
+    });
 
     initAuth(document.body);
     initAuthHandlers();
     renderUserBadge();
     renderCommunityPosts();
 
+    const votingState = {};
+
     container.addEventListener('click', e => {
       const btn = e.target.closest('.post-vote');
       if (!btn) return;
       const post = btn.closest('.post-card');
-      const count = post.querySelector('.vote-count');
-      let val = parseInt(count.textContent);
+      const postId = post.dataset.id;
+      const countEl = post.querySelector('.vote-count');
+      let val = parseInt(countEl.textContent);
+
       if (btn.classList.contains('post-upvote')) {
-        if (btn.classList.contains('upvoted')) { val--; btn.classList.remove('upvoted'); }
-        else { val++; btn.classList.add('upvoted'); post.querySelector('.post-downvote')?.classList.remove('downvoted'); }
+        if (votingState[postId] === 'up') {
+          val--;
+          delete votingState[postId];
+        } else {
+          if (votingState[postId] === 'down') val++;
+          val++;
+          votingState[postId] = 'up';
+        }
       } else {
-        if (btn.classList.contains('downvoted')) { val++; btn.classList.remove('downvoted'); }
-        else { val--; btn.classList.add('downvoted'); post.querySelector('.post-upvote')?.classList.remove('upvoted'); }
+        if (votingState[postId] === 'down') {
+          val++;
+          delete votingState[postId];
+        } else {
+          if (votingState[postId] === 'up') val--;
+          val--;
+          votingState[postId] = 'down';
+        }
       }
-      count.textContent = val;
+      countEl.textContent = val;
     });
+  }
+
+  function loadCommunityPosts() {
+    try {
+      return JSON.parse(localStorage.getItem('noisedna_community_posts') || '[]');
+    } catch { return []; }
+  }
+
+  function saveCommunityPost(post) {
+    try {
+      const posts = loadCommunityPosts();
+      posts.unshift(post);
+      localStorage.setItem('noisedna_community_posts', JSON.stringify(posts));
+    } catch(e) {}
   }
 
   function renderCommunityPosts() {
     const container = document.getElementById('communityPosts');
     if (!container) return;
     const posts = state.communityPosts || [];
-    const user = state.currentUser;
-    const flag = user ? getCountryFlag(user.country) : '';
+    const existingForm = container.querySelector('.new-post-card');
+    let postsHtml = '';
 
-    container.innerHTML = posts.map(p => {
-      const pFlag = getCountryFlag(p.country);
-      return `<div class="card post-card retro-window" data-id="${p.id}">
+    posts.forEach(p => {
+      const pFlag = getCountryFlag(p.country || '');
+      const avatar = p.user ? p.user.charAt(0).toUpperCase() : 'G';
+      postsHtml += `<div class="card post-card retro-window" data-id="${p.id}">
         <div class="post-header">
-          <span class="post-avatar" style="background:var(--accent);color:var(--text-on-accent)">${p.avatar}</span>
+          <span class="post-avatar" style="background:var(--accent);color:var(--text-on-accent)">${avatar}</span>
           <span class="post-user">${p.user}</span>
-          <span class="post-country">${pFlag}</span>
+          <span class="post-country">${pFlag} ${p.country || ''}</span>
           <span class="post-time">${p.time}</span>
         </div>
         <div class="post-content">
@@ -1647,60 +2479,167 @@
           <span class="post-comments"><i class="fas fa-comment"></i> ${p.comments} comments</span>
         </div>
       </div>`;
-    }).join('');
-  }
+    });
 
-  function initReports() {
-    state.reports = [
-      { id: 1, location: 'Times Square, NYC', type: 'noise', severity: 'high', desc: 'Extreme noise levels from street performers and construction — measured 98 dB near the TKTS booth.', time: '2h ago' },
-      { id: 2, location: 'Central Park, NYC', type: 'temperature', severity: 'medium', desc: 'Heat island effect near the ballfields. Surface temp 108°F while ambient is 92°F.', time: '5h ago' },
-      { id: 3, location: 'Lower Manhattan', type: 'airquality', severity: 'medium', desc: 'AQI reading 85 near the Holland Tunnel exit — moderate but spiking during rush hours.', time: '8h ago' },
-      { id: 4, location: 'Brooklyn Bridge Walkway', type: 'vibration', severity: 'low', desc: 'Noticeable vibration during heavy pedestrian traffic. Within normal range.', time: '1d ago' },
-    ];
+    const formHtml = existingForm ? existingForm.outerHTML : '';
+    container.innerHTML = formHtml + postsHtml;
 
-    const form = document.getElementById('reportForm');
-    const list = document.getElementById('reportsList');
-
-    if (form) {
-      form.addEventListener('submit', e => {
-        e.preventDefault();
-        const loc = document.getElementById('reportLocation').value;
-        const type = document.getElementById('reportType').value;
-        const desc = document.getElementById('reportDescription').value;
-        const severity = document.getElementById('reportSeverity').value;
-        if (!type || !loc || !desc) return;
-        state.reports.unshift({
-          id: Date.now(),
-          location: loc,
-          type: type,
-          severity: severity,
-          desc: desc,
+    if (formHtml) {
+      document.getElementById('postSubmitBtn')?.addEventListener('click', () => {
+        const username = document.getElementById('postUsername').value.trim() || 'Guest';
+        const title = document.getElementById('postTitle').value.trim();
+        const content = document.getElementById('postContent').value.trim();
+        if (!title || !content) return;
+        const userCountry = state.currentUser ? state.currentUser.country : '';
+        const newPost = {
+          id: 'post-' + Date.now(),
+          user: username,
+          country: userCountry || 'United States',
           time: 'Just now',
-        });
-        renderReports();
-        form.reset();
+          title: title,
+          content: content,
+          votes: 0,
+          comments: 0,
+        };
+        state.communityPosts.unshift(newPost);
+        saveCommunityPost(newPost);
+        document.getElementById('postTitle').value = '';
+        document.getElementById('postContent').value = '';
+        renderCommunityPosts();
       });
     }
 
-    renderReports();
+    const votingState = {};
+    container.querySelectorAll('.post-vote').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        const post = this.closest('.post-card');
+        const postId = post.dataset.id;
+        const countEl = post.querySelector('.vote-count');
+        let val = parseInt(countEl.textContent);
 
-    function renderReports() {
-      if (!list) return;
-      list.innerHTML = state.reports.map(r => `
-        <div class="report-item severity-${r.severity}">
+        if (this.classList.contains('post-upvote')) {
+          if (votingState[postId] === 'up') {
+            val--;
+            delete votingState[postId];
+          } else {
+            if (votingState[postId] === 'down') val++;
+            val++;
+            votingState[postId] = 'up';
+          }
+        } else {
+          if (votingState[postId] === 'down') {
+            val++;
+            delete votingState[postId];
+          } else {
+            if (votingState[postId] === 'up') val--;
+            val--;
+            votingState[postId] = 'down';
+          }
+        }
+        countEl.textContent = val;
+      });
+    });
+  }
+
+  function getGlobalReports() {
+    try {
+      return JSON.parse(localStorage.getItem('noisedna_global_reports') || '[]');
+    } catch { return []; }
+  }
+
+  function saveGlobalReport(report) {
+    try {
+      const reports = getGlobalReports();
+      reports.unshift(report);
+      localStorage.setItem('noisedna_global_reports', JSON.stringify(reports));
+    } catch(e) {}
+  }
+
+  function initReports() {
+    const form = document.getElementById('reportForm');
+    const list = document.getElementById('reportsList');
+
+    if (!form) return;
+
+    const countryGroup = document.createElement('div');
+    countryGroup.className = 'form-group';
+    countryGroup.innerHTML = `
+      <label for="reportCountry">Country</label>
+      <select class="form-select" id="reportCountry">
+        ${COUNTRIES.map(c => `<option value="${c}" ${state.currentUser && state.currentUser.country === c ? 'selected' : ''}>${c}</option>`).join('')}
+      </select>
+    `;
+
+    const cityGroup = document.createElement('div');
+    cityGroup.className = 'form-group';
+    cityGroup.innerHTML = `
+      <label for="reportCity">City</label>
+      <input type="text" class="form-input" id="reportCity" placeholder="e.g. Central Station" />
+    `;
+
+    const locationGroup = document.getElementById('reportLocation').parentNode;
+    locationGroup.parentNode.insertBefore(countryGroup, locationGroup);
+    locationGroup.parentNode.insertBefore(cityGroup, locationGroup);
+
+    document.getElementById('reportLocation').placeholder = 'e.g. Central Station';
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const loc = document.getElementById('reportLocation').value;
+      const city = document.getElementById('reportCity').value;
+      const country = document.getElementById('reportCountry').value;
+      const type = document.getElementById('reportType').value;
+      const desc = document.getElementById('reportDescription').value;
+      const severity = document.getElementById('reportSeverity').value;
+      if (!type || !loc || !desc) return;
+      const username = state.currentUser ? state.currentUser.username : 'Anonymous';
+      const report = {
+        id: Date.now(),
+        location: loc,
+        city: city || 'Unknown',
+        country: country,
+        type: type,
+        severity: severity,
+        desc: desc,
+        time: 'Just now',
+        username: username,
+      };
+      saveGlobalReport(report);
+      renderReports();
+      form.reset();
+    });
+
+    renderReports();
+  }
+
+  function renderReports() {
+    const list = document.getElementById('reportsList');
+    if (!list) return;
+
+    const reports = getGlobalReports();
+    reports.sort((a, b) => b.id - a.id);
+
+    list.innerHTML = reports.length === 0
+      ? '<div style="text-align:center;padding:30px;color:var(--text-muted)">No reports yet. Be the first to submit one!</div>'
+      : reports.map(r => {
+        const countryFlag = getCountryFlag(r.country || '');
+        return `<div class="report-item severity-${r.severity}">
           <div class="report-item-header">
             <span class="report-type-badge ${r.type}"><i class="fas ${r.type === 'noise' ? 'fa-volume-up' : r.type === 'temperature' ? 'fa-temperature-high' : r.type === 'airquality' ? 'fa-wind' : r.type === 'vibration' ? 'fa-triangle-exclamation' : 'fa-circle'}"></i> ${r.type.charAt(0).toUpperCase() + r.type.slice(1)}</span>
             <span class="report-item-severity ${r.severity}">${r.severity.charAt(0).toUpperCase() + r.severity.slice(1)}</span>
-            <span class="report-item-location"><i class="fas fa-location-dot"></i> ${r.location}</span>
+            <span class="report-item-location"><i class="fas fa-location-dot"></i> ${r.location}${r.city ? ', ' + r.city : ''}</span>
+            <span class="report-item-country">${countryFlag} ${r.country || ''}</span>
           </div>
           <div class="report-item-desc">${r.desc}</div>
-          <span class="report-item-time">Submitted ${r.time}</span>
-        </div>
-      `).join('');
-    }
+          <div class="report-item-meta">
+            <span class="report-item-time">Submitted ${r.time}</span>
+            <span class="report-item-user"><i class="fas fa-user"></i> ${r.username || 'Anonymous'}</span>
+          </div>
+        </div>`;
+      }).join('');
   }
 
-  const SENSITIVE_ZONE_DATA = [
+  const DEFAULT_SENSITIVE_ZONES = [
     { id: 'school-1', name: 'PS 321 School', type: 'school', lat: 40.718, lng: -73.995, baseNoise: 62 },
     { id: 'hospital-1', name: 'NYU Langone Hospital', type: 'hospital', lat: 40.742, lng: -73.974, baseNoise: 58 },
     { id: 'library-1', name: 'NY Public Library', type: 'library', lat: 40.752, lng: -73.982, baseNoise: 48 },
@@ -1715,7 +2654,7 @@
   }
 
   function renderSensitiveZones() {
-    const zones = SENSITIVE_ZONE_DATA;
+    const zones = currentSensitiveZones.length > 0 ? currentSensitiveZones : DEFAULT_SENSITIVE_ZONES;
     const hour = new Date().getHours();
     let timeFactor;
     if (hour >= 7 && hour < 10) timeFactor = 1.2;
@@ -1724,10 +2663,11 @@
     else if (hour >= 20 && hour < 23) timeFactor = 0.9;
     else timeFactor = 0.6;
 
-    const typeMap = {
-      'school': { cards: ['PS 321 School', 'Columbia University'], name: 'NYC Public Schools', icon: 'fa-school', color: '#06B6D4' },
-      'hospital': { cards: ['NYU Langone Hospital', 'Mount Sinai Hospital'], name: 'NYC Hospitals', icon: 'fa-hospital', color: '#EF4444' },
-      'library': { cards: ['NY Public Library', 'Brooklyn Public Library'], name: 'NYPL Branches', icon: 'fa-book', color: '#F59E0B' },
+    const cs = state.caseStudy || CASE_STUDIES['United States'];
+    const typeMap = cs.zoneGroups || {
+      school: { cards: ['PS 321 School', 'Columbia University'], name: 'NYC Public Schools', icon: 'fa-school', color: '#06B6D4' },
+      hospital: { cards: ['NYU Langone Hospital', 'Mount Sinai Hospital'], name: 'NYC Hospitals', icon: 'fa-hospital', color: '#EF4444' },
+      library: { cards: ['NY Public Library', 'Brooklyn Public Library'], name: 'NYPL Branches', icon: 'fa-book', color: '#F59E0B' },
     };
 
     Object.keys(typeMap).forEach(type => {
@@ -1743,8 +2683,11 @@
 
       const zoneCard = document.querySelector(`.zone-card.${type}`);
       if (!zoneCard) return;
-      zoneCard.querySelector('.z-val').textContent = noise + ' dB';
-      zoneCard.querySelector('.z-val').className = 'z-val zone-' + (noise > 70 ? 'loud' : noise > 55 ? 'moderate' : 'quiet');
+      const valEl = zoneCard.querySelector('.z-val');
+      if (valEl) {
+        valEl.textContent = noise + ' dB';
+        valEl.className = 'z-val zone-' + (noise > 70 ? 'loud' : noise > 55 ? 'moderate' : 'quiet');
+      }
       const badge = zoneCard.querySelector('.z-badge');
       if (badge) {
         badge.textContent = riskLabels[risk.id] || 'Moderate';

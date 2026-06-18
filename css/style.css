@@ -1861,3 +1861,44 @@ input, select, textarea, button, a, .nav-item, .forecast-tab, .map-btn, .route-c
 
 .rec-meta { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
 .rec-meta span { font-family: var(--font-ui); font-size: 0.48rem; padding: 1px 5px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
+
+.form-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+textarea.form-input {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.new-post-card .new-post-form {
+  padding: 12px;
+}
+
+.post-country {
+  font-family: var(--font-ui);
+  font-size: 0.5rem;
+  color: var(--text-muted);
+}
+
+.legacy .form-input {
+  border-radius: 100px;
+  font-family: var(--font-ui);
+}
+
+.report-item-country {
+  font-family: var(--font-ui);
+  font-size: 0.48rem;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
