@@ -847,6 +847,11 @@ body {
   transition: grid-template-columns 0.3s ease, gap 0.3s ease;
 }
 
+.dashboard-grid.layout-default {
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
 .dashboard-grid.layout-compact {
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;

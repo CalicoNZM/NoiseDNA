@@ -2988,7 +2988,9 @@
       return `<div class="forecast-hour">
         <span class="fh-time">${h.time}</span>
         <div class="fh-bar-wrap">
-          <div class="fh-bar ${risk.id}" style="height:${pct}%"></div>
+          <div class="fh-bar">
+            <div class="bar-fill ${risk.id}" style="height:${pct}%"></div>
+          </div>
         </div>
         <span class="fh-label">${h.noise}</span>
       </div>`;
@@ -3007,12 +3009,10 @@
       return `<div class="daily-card" style="${d.today ? 'border:1px solid rgba(6,182,212,0.2);background:rgba(6,182,212,0.05)' : ''}">
         <span class="daily-name">${d.day}${d.today ? ' (Today)' : ''}</span>
         <div class="daily-range">
-          <span class="daily-low">${d.low}</span>
-          <div class="daily-range-bar">
-            <div class="daily-range-fill ${risk.id}" style="width:${pct}%"></div>
-          </div>
-          <span class="daily-high">${d.high}</span>
+          <div class="daily-range-fill ${risk.id}" style="width:${pct}%"></div>
         </div>
+        <span class="daily-low">${d.low}</span>
+        <span class="daily-high">${d.high}</span>
       </div>`;
     }).join('');
   }
@@ -3386,7 +3386,7 @@
       'Burundi': '🇧🇮',
       'Cabo Verde': '🇨🇻', 'Cambodia': '🇰🇭', 'Cameroon': '🇨🇲', 'Canada': '🇨🇦',
       'Chad': '🇹🇩', 'Chile': '🇨🇱', 'China': '🇨🇳', 'Colombia': '🇨🇴', 'Comoros': '🇰🇲',
-      'Congo': '🇨🇬', 'Costa Rica': '🇨🇷', 'Croatia': '🇭🇷', 'Cuba': '🇨🇺', 'Cyprus': '🇨🇾',
+      'Congo': '🇨🇬', 'Costa Rica': '🇨🇷', "Côte d'Ivoire": '🇨🇮', 'Croatia': '🇭🇷', 'Cuba': '🇨🇺', 'Cyprus': '🇨🇾',
       'Czech Republic (Czechia)': '🇨🇿',
       'Denmark': '🇩🇰', 'Djibouti': '🇩🇯', 'Dominica': '🇩🇲', 'Dominican Republic': '🇩🇴',
       'DR Congo': '🇨🇩',
@@ -3519,7 +3519,7 @@
       document.getElementById('authCountry').parentNode,
       'authCountry',
       COUNTRIES.map(c => ({ value: c, label: c })),
-      ''
+      'Afghanistan'
     );
     renderUserBadge();
     renderCommunityPosts();
