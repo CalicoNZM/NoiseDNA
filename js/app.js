@@ -1573,188 +1573,12 @@
     return Math.sqrt((lat - projLat) * (lat - projLat) + (lng - projLng) * (lng - projLng));
   }
 
-  let routeMapInstance = null;
-  let routeLayers = [];
   const votingState = {};
 
-  function generateDynamicRoutes(startLat, startLng, endLat, endLng) {
-    const GRID = 12;
-    const pad = 0.015;
-    const minLat = Math.min(startLat, endLat) - pad;
-    const maxLat = Math.max(startLat, endLat) + pad;
-    const minLng = Math.min(startLng, endLng) - pad;
-    const maxLng = Math.max(startLng, endLng) + pad;
-    const latStep = (maxLat - minLat) / GRID;
-    const lngStep = (maxLng - minLng) / GRID;
-
-    const grid = [];
-    for (let i = 0; i < GRID; i++) {
-      grid[i] = [];
-      for (let j = 0; j < GRID; j++) {
-        const clat = minLat + (i + 0.5) * latStep;
-        const clng = minLng + (j + 0.5) * lngStep;
-        const dist = distToLine(clat, clng, startLat, startLng, endLat, endLng);
-        let noise, speed;
-        if (dist < 0.002) { noise = rand(65, 80); speed = 25; }
-        else if (dist < 0.006) { noise = rand(50, 65); speed = 15; }
-        else { noise = rand(35, 50); speed = 8; }
-        grid[i][j] = { noise, speed, lat: clat, lng: clng };
-      }
-    }
-
-    function gridKey(i, j) { return i + ',' + j; }
-
-    function cellDist(i1, j1, i2, j2) {
-      const dlat = (i2 - i1) * latStep;
-      const dlng = (j2 - j1) * lngStep;
-      return Math.sqrt(dlat * dlat + dlng * dlng) * 111000;
-    }
-
-    function findPath(costWeight) {
-      const si = clamp(Math.round((startLat - minLat) / latStep - 0.5), 0, GRID - 1);
-      const sj = clamp(Math.round((startLng - minLng) / lngStep - 0.5), 0, GRID - 1);
-      const ei = clamp(Math.round((endLat - minLat) / latStep - 0.5), 0, GRID - 1);
-      const ej = clamp(Math.round((endLng - minLng) / lngStep - 0.5), 0, GRID - 1);
-
-      const start = { i: si, j: sj };
-      const end = { i: ei, j: ej };
-      let openSet = [start];
-      const cameFrom = {};
-      const gScore = {};
-      const fScore = {};
-      const startKey = gridKey(si, sj);
-      gScore[startKey] = 0;
-      fScore[startKey] = cellDist(si, sj, ei, ej);
-
-      const maxIter = GRID * GRID * 4;
-      let iter = 0;
-
-      while (openSet.length > 0 && iter < maxIter) {
-        iter++;
-        let lowestIdx = 0;
-        for (let k = 1; k < openSet.length; k++) {
-          const k1 = gridKey(openSet[k].i, openSet[k].j);
-          const k0 = gridKey(openSet[lowestIdx].i, openSet[lowestIdx].j);
-          if ((fScore[k1] || Infinity) < (fScore[k0] || Infinity)) lowestIdx = k;
-        }
-        const current = openSet[lowestIdx];
-        if (current.i === end.i && current.j === end.j) {
-          const path = [];
-          let c = current;
-          while (c) {
-            const lat = minLat + (c.i + 0.5) * latStep + rand(-latStep * 0.2, latStep * 0.2);
-            const lng = minLng + (c.j + 0.5) * lngStep + rand(-lngStep * 0.2, lngStep * 0.2);
-            path.unshift([lat, lng]);
-            const ck = gridKey(c.i, c.j);
-            c = cameFrom[ck];
-          }
-          return path;
-        }
-
-        openSet.splice(lowestIdx, 1);
-        const cKey = gridKey(current.i, current.j);
-
-        for (let di = -1; di <= 1; di++) {
-          for (let dj = -1; dj <= 1; dj++) {
-            if (di === 0 && dj === 0) continue;
-            const ni = current.i + di;
-            const nj = current.j + dj;
-            if (ni < 0 || ni >= GRID || nj < 0 || nj >= GRID) continue;
-
-            const cell = grid[ni][nj];
-            const moveDist = cellDist(current.i, current.j, ni, nj);
-            const timeCost = moveDist / (cell.speed * 1000 / 60 / 60);
-            const noiseCost = (cell.noise / 100) * costWeight * moveDist;
-            const tentG = (gScore[cKey] || 0) + timeCost / 60 + noiseCost / 1000;
-            const nKey = gridKey(ni, nj);
-
-            if (tentG < (gScore[nKey] || Infinity)) {
-              cameFrom[nKey] = { i: current.i, j: current.j };
-              gScore[nKey] = tentG;
-              fScore[nKey] = tentG + cellDist(ni, nj, ei, ej) / 25000;
-              if (!openSet.find(n => n.i === ni && n.j === nj)) {
-                openSet.push({ i: ni, j: nj });
-              }
-            }
-          }
-        }
-      }
-
-      const fallback = [];
-      const steps = 8;
-      for (let t = 0; t <= steps; t++) {
-        const f = t / steps;
-        fallback.push([startLat + (endLat - startLat) * f, startLng + (endLng - startLng) * f]);
-      }
-      return fallback;
-    }
-
-    const fastestPath = findPath(0.1);
-    const balancedPath = findPath(0.6);
-    const quietestPath = findPath(2.0);
-
-    function haversine(pts) {
-      let total = 0;
-      for (let i = 1; i < pts.length; i++) {
-        const dlat = (pts[i][0] - pts[i - 1][0]) * Math.PI / 180;
-        const dlng = (pts[i][1] - pts[i - 1][1]) * Math.PI / 180;
-        const a = Math.sin(dlat / 2) * Math.sin(dlat / 2) +
-          Math.cos(pts[i - 1][0] * Math.PI / 180) * Math.cos(pts[i][0] * Math.PI / 180) *
-          Math.sin(dlng / 2) * Math.sin(dlng / 2);
-        total += 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      }
-      return Math.round(total * 10) / 10;
-    }
-
-    function avgNoise(pts) {
-      let sum = 0; let count = 0;
-      for (const p of pts) {
-        const dist = distToLine(p[0], p[1], startLat, startLng, endLat, endLng);
-        if (dist < 0.002) sum += rand(65, 80);
-        else if (dist < 0.006) sum += rand(50, 65);
-        else sum += rand(35, 50);
-        count++;
-      }
-      return Math.round(sum / count);
-    }
-
-    const fastestDist = haversine(fastestPath);
-    const balancedDist = haversine(balancedPath);
-    const quietestDist = haversine(quietestPath);
-
-    const fastestTime = Math.round(fastestDist / 22 * 60);
-    const balancedTime = Math.round(balancedDist / 14 * 60);
-    const quietestTime = Math.round(quietestDist / 9 * 60);
-
-    const fastestNoise = avgNoise(fastestPath);
-    const balancedNoise = avgNoise(balancedPath);
-    const quietestNoise = avgNoise(quietestPath);
-
-    const routeTypes = {
-      fastest: {
-        coords: fastestPath,
-        noise: fastestNoise, time: fastestTime, dist: fastestDist,
-        score: Math.round(100 - (fastestNoise - 30) / 80 * 100),
-        pct: 100,
-        color: '#EF4444', label: 'Fastest Route',
-      },
-      balanced: {
-        coords: balancedPath,
-        noise: balancedNoise, time: balancedTime, dist: balancedDist,
-        score: Math.round(100 - (balancedNoise - 30) / 80 * 100),
-        pct: Math.round((fastestTime / balancedTime) * 100),
-        color: '#F59E0B', label: 'Balanced Route',
-      },
-      quietest: {
-        coords: quietestPath,
-        noise: quietestNoise, time: quietestTime, dist: quietestDist,
-        score: Math.round(100 - (quietestNoise - 30) / 80 * 100),
-        pct: Math.round((fastestTime / quietestTime) * 100),
-        color: '#10B981', label: 'Quietest Route',
-      },
-    };
-    return { routeTypes, startLat, startLng, endLat, endLng };
-  }
+  const defaultRecommendations = [
+    { problem: 'Traffic Noise', solution: 'Install acoustic barriers', impact: 'High' },
+    { problem: 'Echo / Reverberation', solution: 'Add sound-absorbing panels', impact: 'Medium' },
+  ];
 
   function drawGauge(canvas, value) {
     if (!canvas) return;
@@ -1861,7 +1685,6 @@
     weeklyData: [],
     hotspots: [],
     forecastPeriod: 'today',
-    selectedRoute: 'balanced',
     buildingType: 'school',
     buildingFloors: '4-8',
     buildingProximity: 'Near (10-50m)',
@@ -1896,90 +1719,11 @@
   let hourlyChartInstance, forecastChartInstance;
   let mapInstance;
   let updateInterval;
-  let userMarker, userRouteMarker, zoneLayer;
+  let userMarker, zoneLayer;
   const initializedSections = new Set();
   let currentSensitiveZones = [];
 
-  function initRouteMap() {
-    const container = document.getElementById('routeMiniMap');
-    if (!container || typeof L === 'undefined') return;
-    if (routeMapInstance) {
-      routeMapInstance.setView([state.lat || 40.7704, state.lng || -73.9760]);
-      routeMapInstance.invalidateSize();
-      return;
-    }
-    routeMapInstance = L.map('routeMiniMap', {
-      center: [state.lat || 40.7704, state.lng || -73.9760],
-      zoom: 14, zoomControl: false, attributionControl: false,
-    });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd', maxZoom: 19,
-    }).addTo(routeMapInstance);
-  }
 
-  function clearRouteLayers() {
-    routeLayers.forEach(l => routeMapInstance?.removeLayer(l));
-    routeLayers = [];
-  }
-
-  function recalculateRoutes() {
-    if (!routeMapInstance) initRouteMap();
-    if (!routeMapInstance) return;
-    clearRouteLayers();
-
-    const startVal = document.getElementById('routeStart').value;
-    const endVal = document.getElementById('routeEnd').value;
-    if (!endVal) { alert('Please enter a destination'); return; }
-
-    const cs = state.caseStudy || CASE_STUDIES['United States'];
-    const presets = cs.landmarks || {};
-
-    let startLat = state.lat;
-    let startLng = state.lng;
-    if (startVal !== 'current') {
-      const c = presets[startVal];
-      if (c) { startLat = c[0]; startLng = c[1]; }
-    }
-    if (!startLat || !startLng) { startLat = cs.lat; startLng = cs.lng; }
-
-    let endCoords = presets[endVal];
-    if (!endCoords) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 0.005 + Math.random() * 0.015;
-      endCoords = [startLat + Math.cos(angle) * dist, startLng + Math.sin(angle) * dist];
-    }
-
-    const startName = startVal === 'current' ? (state.locationName || 'Current Location') : startVal;
-    const endName = endVal || 'Destination';
-    const startM = L.marker([startLat, startLng]).addTo(routeMapInstance)
-      .bindPopup('<b>' + startName + '</b><br>Start');
-    const endM = L.marker(endCoords).addTo(routeMapInstance)
-      .bindPopup('<b>' + endName + '</b><br>Destination');
-    routeLayers.push(startM, endM);
-
-    const { routeTypes } = generateDynamicRoutes(startLat, startLng, endCoords[0], endCoords[1]);
-    const allCoords = [];
-
-    ['fastest', 'balanced', 'quietest'].forEach(type => {
-      const route = routeTypes[type];
-      const card = document.querySelector(`.route-card.${type}`);
-      if (!card) return;
-      card.querySelector('.route-detail:nth-child(1) span').textContent = route.time + ' min';
-      card.querySelector('.route-detail:nth-child(2) span').textContent = route.dist + ' km';
-      card.querySelector('.route-detail:nth-child(3) span').textContent = route.noise + ' dB avg';
-      card.querySelector('.route-detail:nth-child(4) span').textContent = 'Noise Score: ' + route.score;
-      card.querySelector('.route-bar').style.setProperty('--pct', route.pct + '%');
-
-      const polyline = L.polyline(route.coords, {
-        color: route.color, weight: 4, opacity: 0.8,
-      }).addTo(routeMapInstance);
-      polyline.bindPopup('<b>' + route.label + '</b><br>' + route.noise + ' dB - ' + route.dist + ' km - ' + route.time + ' min');
-      routeLayers.push(polyline);
-      route.coords.forEach(c => allCoords.push(c));
-    });
-
-    routeMapInstance.fitBounds(L.latLngBounds(allCoords), { padding: [30, 30] });
-  }
 
   function applyCaseStudy(cs) {
     state.caseStudy = cs;
@@ -2008,13 +1752,8 @@
     if (sidebarOrg) sidebarOrg.textContent = label;
     if (orgSubtitle) orgSubtitle.textContent = 'Noise Intelligence for ' + cs.name;
 
-    updateRoutePresets(cs);
-
     if (mapInstance) {
       mapInstance.setView([cs.lat, cs.lng], 13);
-    }
-    if (routeMapInstance) {
-      routeMapInstance.setView([cs.lat, cs.lng], 14);
     }
 
     if (document.getElementById('noiseMap')) {
@@ -2052,22 +1791,6 @@
     renderForecast();
   }
 
-  function updateRoutePresets(cs) {
-    const landmarks = cs.landmarks || {};
-    const keys = Object.keys(landmarks);
-
-    const routeStart = document.getElementById('routeStart');
-    if (routeStart) {
-      routeStart.innerHTML = '<option value="current">📍 Current Location</option>';
-      keys.forEach(k => {
-        const opt = document.createElement('option');
-        opt.value = k;
-        opt.textContent = k;
-        routeStart.appendChild(opt);
-      });
-    }
-  }
-
   function init() {
     gaugeCanvas = document.getElementById('noiseGauge');
     gaugeValue = document.getElementById('gaugeValue');
@@ -2103,9 +1826,6 @@
     initNavigation();
     initMobileToggle();
     initRecording();
-    initRouteSwap();
-    initRouteSelection();
-    initRouteFind();
     initBuildingAdvisor();
     initForecastTabs();
     initLegacyToggle();
@@ -2201,12 +1921,6 @@
     }
     if (section === 'map' && mapInstance) {
       setTimeout(() => mapInstance.invalidateSize(), 300);
-    }
-    if (section === 'routes') {
-      setTimeout(() => {
-        initRouteMap();
-        recalculateRoutes();
-      }, 200);
     }
   }
 
@@ -2329,16 +2043,13 @@
           drawGauge(document.getElementById('noiseGauge'), state.currentNoise);
         }
 
-        if (card.contains(document.getElementById('routeMiniMap')) && typeof routeMapInstance !== 'undefined' && routeMapInstance) {
-          setTimeout(() => routeMapInstance.invalidateSize(), 100);
-        }
         if (card.contains(document.getElementById('noiseMap')) && typeof mapInstance !== 'undefined' && mapInstance) {
           setTimeout(() => mapInstance.invalidateSize(), 100);
         }
       });
     });
 
-    document.querySelectorAll('.card, .route-card, .zone-card').forEach(el => ro.observe(el));
+    document.querySelectorAll('.card, .zone-card').forEach(el => ro.observe(el));
   }
 
   function updateLocationUI() {
@@ -2429,13 +2140,6 @@
           radius: 6, color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.8, weight: 2,
         }).addTo(mapInstance).bindPopup('<b>You are here</b>');
         mapInstance.setView([state.lat, state.lng], 13);
-      }
-      if (routeMapInstance && userRouteMarker) {
-        userRouteMarker.setLatLng([state.lat, state.lng]);
-      } else if (routeMapInstance) {
-        userRouteMarker = L.marker([state.lat, state.lng]).addTo(routeMapInstance)
-          .bindPopup('<b>Start: Your Location</b>');
-        routeLayers.push(userRouteMarker);
       }
       updateMapZones();
     }
@@ -2788,31 +2492,6 @@
     if (riskEl) {
       riskEl.innerHTML = '<div class="risk-icon"><i class="fas ' + iconMap[riskIdx] + '" style="color:' + colorMap[riskIdx] + '"></i></div><div class="risk-label" style="color:' + colorMap[riskIdx] + '">' + risk.label + '</div><div class="risk-desc">' + descs[riskIdx] + '</div>';
     }
-  }
-
-  function initRouteSwap() {
-    document.getElementById('routeSwap').addEventListener('click', () => {
-      const s = document.getElementById('routeStart');
-      const e = document.getElementById('routeEnd');
-      const sv = s.value;
-      s.value = e.value || 'current';
-      e.value = sv;
-    });
-  }
-
-  function initRouteSelection() {
-    document.querySelectorAll('.route-card').forEach(card => {
-      card.addEventListener('click', () => {
-        document.querySelectorAll('.route-card').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.route-select-btn').forEach(b => b.textContent = 'Select');
-        card.classList.add('active');
-        card.querySelector('.route-select-btn').textContent = 'Selected';
-      });
-    });
-  }
-
-  function initRouteFind() {
-    document.getElementById('routeFindBtn').addEventListener('click', recalculateRoutes);
   }
 
   function renderDashboard() {
@@ -4045,7 +3724,6 @@
       'Nearby sensors show noise readings from devices around you',
       'Use the Live Map to see noise hotspots in your area',
       'The Forecast tab predicts noise trends for the day ahead',
-      'Quiet Routes lets you type <strong>any</strong> destination to find quiet paths',
       'Building Advisor helps design noise-resilient buildings',
       'Sensitive Zones track noise at schools, hospitals & parks near you',
       'Share your noise data in the Community tab!',
