@@ -565,18 +565,18 @@ body {
   50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
 }
 
-.risk-ring { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.ring-segments { display: flex; gap: 2px; }
-.ring-seg {
+.risk-ring { display: flex; gap: 2px; }
+.risk-ring-segment {
   width: 40px; height: 8px;
   border: 1px solid var(--border-color);
   background: transparent;
+  border-radius: 2px;
 }
-.ring-seg.active { border-color: transparent; }
-.ring-seg.q { background: var(--success); }
-.ring-seg.m { background: var(--warning); }
-.ring-seg.l { background: var(--accent); }
-.ring-seg.d { background: var(--danger); }
+.risk-ring-segment.active { border-color: transparent; }
+.risk-ring-segment.quiet { background: var(--success); }
+.risk-ring-segment.moderate { background: var(--warning); }
+.risk-ring-segment.loud { background: var(--accent); }
+.risk-ring-segment.dangerous { background: var(--danger); }
 
 .risk-status {
   text-align: center;
@@ -667,6 +667,8 @@ body {
 .map-stats .ms-item { display: flex; gap: 4px; }
 .map-stats .ms-label { color: var(--text-muted); }
 .map-stats .ms-value { color: var(--accent); font-weight: 700; }
+.map-stat-label { color: var(--text-muted); font-size: 0.65rem; }
+.map-stat-value { color: var(--accent); font-weight: 700; font-size: 0.8rem; }
 
 .forecast-tabs { display: flex; gap: 0; margin-bottom: 12px; border: 1px solid var(--border-strong); width: fit-content; }
 
@@ -1085,10 +1087,14 @@ body {
 
 .chart-wrap { height: 180px; padding: 4px; }
 
-.forecast-timeline { display: flex; align-items: flex-end; gap: 3px; height: 100px; padding: 8px 0; }
+.forecast-timeline { display: flex; align-items: flex-end; gap: 4px; height: 100px; padding: 8px 0; }
+
+.forecast-hour { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+
+.fh-bar-wrap { width: 100%; display: flex; flex-direction: column; align-items: center; }
 
 .fh-bar {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  width: 80%; display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
 
 .fh-bar .bar-fill {
@@ -1414,7 +1420,7 @@ input, select, textarea, button, a, .nav-item, .forecast-tab, .map-btn, .route-c
   --alert-info: #2997ff;
 }
 
-.legacy body {
+body.legacy {
   background-image: none;
   font-family: var(--font-body);
 }
@@ -1518,6 +1524,7 @@ input, select, textarea, button, a, .nav-item, .forecast-tab, .map-btn, .route-c
   box-shadow: none;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
 }
 
 .legacy .slider-dot {
@@ -1675,10 +1682,6 @@ input, select, textarea, button, a, .nav-item, .forecast-tab, .map-btn, .route-c
   border-radius: var(--radius-sm);
 }
 
-.legacy .slider-controls {
-  background: var(--bg-elevated);
-}
-
 .legacy .legacy-toggle.active {
   background: var(--accent);
   border-color: var(--accent);
@@ -1723,7 +1726,7 @@ input, select, textarea, button, a, .nav-item, .forecast-tab, .map-btn, .route-c
   --alert-info: #2997ff;
 }
 
-.legacy.dark body {
+body.legacy.dark {
   background-image: none;
 }
 
@@ -2000,6 +2003,10 @@ input, select, textarea, button, a, .nav-item, .forecast-tab, .map-btn, .route-c
 }
 .report-submit-btn:hover { background: var(--accent-hover); }
 .reports-list { display: flex; flex-direction: column; gap: 6px; }
+.report-item.severity-low { border-left: 3px solid var(--success); }
+.report-item.severity-medium { border-left: 3px solid var(--warning); }
+.report-item.severity-high { border-left: 3px solid var(--danger); }
+
 .report-item {
   border: 1px solid var(--border-color); background: var(--bg-card);
   padding: 8px 10px; border-radius: var(--radius); box-shadow: var(--shadow-btn);
@@ -2162,6 +2169,10 @@ textarea.form-input {
   gap: 10px;
   transition: background var(--transition, 0.15s ease);
 }
+
+.sensor-item.good { border-left: 3px solid var(--success); }
+.sensor-item.moderate { border-left: 3px solid var(--warning); }
+.sensor-item.warning { border-left: 3px solid var(--danger); }
 
 .sensor-item:hover {
   background: var(--bg-card-hover, rgba(0,0,0,0.02));

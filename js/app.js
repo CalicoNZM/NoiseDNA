@@ -1575,6 +1575,7 @@
 
   let routeMapInstance = null;
   let routeLayers = [];
+  const votingState = {};
 
   function generateDynamicRoutes(startLat, startLng, endLat, endLng) {
     const GRID = 12;
@@ -1895,14 +1896,18 @@
   let hourlyChartInstance, forecastChartInstance;
   let mapInstance;
   let updateInterval;
-  let userMarker, userRouteMarker;
+  let userMarker, userRouteMarker, zoneLayer;
   const initializedSections = new Set();
   let currentSensitiveZones = [];
 
   function initRouteMap() {
     const container = document.getElementById('routeMiniMap');
     if (!container || typeof L === 'undefined') return;
-    if (routeMapInstance) { routeMapInstance.invalidateSize(); return; }
+    if (routeMapInstance) {
+      routeMapInstance.setView([state.lat || 40.7704, state.lng || -73.9760]);
+      routeMapInstance.invalidateSize();
+      return;
+    }
     routeMapInstance = L.map('routeMiniMap', {
       center: [state.lat || 40.7704, state.lng || -73.9760],
       zoom: 14, zoomControl: false, attributionControl: false,
@@ -1945,7 +1950,7 @@
     }
 
     const startName = startVal === 'current' ? (state.locationName || 'Current Location') : startVal;
-    const endName = endVal === state.locationName ? endVal : endVal;
+    const endName = endVal || 'Destination';
     const startM = L.marker([startLat, startLng]).addTo(routeMapInstance)
       .bindPopup('<b>' + startName + '</b><br>Start');
     const endM = L.marker(endCoords).addTo(routeMapInstance)
@@ -2052,7 +2057,6 @@
     const keys = Object.keys(landmarks);
 
     const routeStart = document.getElementById('routeStart');
-    const routeEnd = document.getElementById('routeEnd');
     if (routeStart) {
       routeStart.innerHTML = '<option value="current">📍 Current Location</option>';
       keys.forEach(k => {
@@ -2060,15 +2064,6 @@
         opt.value = k;
         opt.textContent = k;
         routeStart.appendChild(opt);
-      });
-    }
-    if (routeEnd) {
-      routeEnd.innerHTML = '<option value="">Choose destination...</option>';
-      keys.forEach(k => {
-        const opt = document.createElement('option');
-        opt.value = k;
-        opt.textContent = k;
-        routeEnd.appendChild(opt);
       });
     }
   }
@@ -2393,9 +2388,12 @@
       state.lat = pos.coords.latitude;
       state.lng = pos.coords.longitude;
       state.locationSet = true;
-      state.hourlyData = generateHourlyData(state.baseNoise);
+      state.hourlyData = generateHourlyData(state.currentNoise || state.baseNoise);
+      state.weeklyData = generateWeeklyData(state.currentNoise || state.baseNoise);
+      currentSensitiveZones = generateLocalProtectiveZones();
       reverseGeocode(state.lat, state.lng);
       updateMapMarkers();
+      renderSensitiveZones();
       renderForecast();
     }
 
@@ -2409,9 +2407,12 @@
               state.lat = data.latitude;
               state.lng = data.longitude;
               state.locationSet = true;
-              state.hourlyData = generateHourlyData(state.baseNoise);
+              state.hourlyData = generateHourlyData(state.currentNoise || state.baseNoise);
+              state.weeklyData = generateWeeklyData(state.currentNoise || state.baseNoise);
+              currentSensitiveZones = generateLocalProtectiveZones();
               reverseGeocode(state.lat, state.lng);
               updateMapMarkers();
+              renderSensitiveZones();
               renderForecast();
             }
           })
@@ -2436,6 +2437,7 @@
           .bindPopup('<b>Start: Your Location</b>');
         routeLayers.push(userRouteMarker);
       }
+      updateMapZones();
     }
 
     const watchId = navigator.geolocation.watchPosition(success, error, options);
@@ -2916,9 +2918,17 @@
     if (!ctx) return;
     if (forecastChartInstance) forecastChartInstance.destroy();
 
-    const baseNoise = state.baseNoise || 67;
-    const hours = state.forecastPeriod === 'today' ? state.hourlyData
-      : generateHourlyData(baseNoise + rand(-3, 3));
+    const baseNoise = state.currentNoise || state.baseNoise || 67;
+    let hours;
+    if (state.forecastPeriod === 'today') {
+      hours = state.hourlyData;
+    } else {
+      if (!state._forecastCache || state._forecastBase !== baseNoise) {
+        state._forecastCache = generateHourlyData(baseNoise + rand(-3, 3));
+        state._forecastBase = baseNoise;
+      }
+      hours = state._forecastCache;
+    }
 
     const values = hours.map(h => h.noise);
     const getColor = (v) => {
@@ -2978,9 +2988,17 @@
   function renderForecastTimeline() {
     const container = document.getElementById('forecastTimeline');
     if (!container) return;
-    const baseNoise = state.baseNoise || 67;
-    const hours = state.forecastPeriod === 'today' ? state.hourlyData
-      : generateHourlyData(baseNoise + rand(-3, 3));
+    const baseNoise = state.currentNoise || state.baseNoise || 67;
+    let hours;
+    if (state.forecastPeriod === 'today') {
+      hours = state.hourlyData;
+    } else {
+      if (!state._forecastCache || state._forecastBase !== baseNoise) {
+        state._forecastCache = generateHourlyData(baseNoise + rand(-3, 3));
+        state._forecastBase = baseNoise;
+      }
+      hours = state._forecastCache;
+    }
 
     container.innerHTML = hours.map(h => {
       const risk = getRiskLevel(h.noise);
@@ -3024,7 +3042,7 @@
     const cs = state.caseStudy || CASE_STUDIES['United States'];
 
     mapInstance = L.map('noiseMap', {
-      center: [cs.lat, cs.lng],
+      center: [state.lat || cs.lat, state.lng || cs.lng],
       zoom: 13,
       zoomControl: true,
     });
@@ -3047,20 +3065,9 @@
       }).addTo(mapInstance);
     });
 
+    zoneLayer = L.layerGroup().addTo(mapInstance);
     const sz = currentSensitiveZones.length > 0 ? currentSensitiveZones : cs.sensitiveZones || [];
-    sz.forEach(z => {
-      const icons = { school: { icon: 'fa-school', color: '#06B6D4' }, hospital: { icon: 'fa-hospital', color: '#EF4444' }, library: { icon: 'fa-book', color: '#F59E0B' } };
-      const zi = icons[z.type] || { icon: 'fa-building', color: '#10B981' };
-      const markerIcon = L.divIcon({
-        html: `<i class="fas ${zi.icon}" style="color:${zi.color};font-size:18px;text-shadow:0 0 8px ${zi.color}44"></i>`,
-        className: '',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
-      L.marker([z.lat, z.lng], { icon: markerIcon })
-        .addTo(mapInstance)
-        .bindPopup(`<b>${z.name}</b><br>Protected Zone`);
-    });
+    addZoneMarkers(sz);
 
     document.querySelectorAll('.map-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -3081,6 +3088,30 @@
     }
 
     setTimeout(() => mapInstance.invalidateSize(), 300);
+  }
+
+  function addZoneMarkers(zones) {
+    if (!zoneLayer || !mapInstance) return;
+    zoneLayer.clearLayers();
+    zones.forEach(z => {
+      const icons = { school: { icon: 'fa-school', color: '#06B6D4' }, hospital: { icon: 'fa-hospital', color: '#EF4444' }, library: { icon: 'fa-book', color: '#F59E0B' } };
+      const zi = icons[z.type] || { icon: 'fa-building', color: '#10B981' };
+      const markerIcon = L.divIcon({
+        html: `<i class="fas ${zi.icon}" style="color:${zi.color};font-size:18px;text-shadow:0 0 8px ${zi.color}44"></i>`,
+        className: '',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+      L.marker([z.lat, z.lng], { icon: markerIcon })
+        .addTo(zoneLayer)
+        .bindPopup(`<b>${z.name}</b><br>Protected Zone`);
+    });
+  }
+
+  function updateMapZones() {
+    if (zoneLayer && currentSensitiveZones.length > 0) {
+      addZoneMarkers(currentSensitiveZones);
+    }
   }
 
   function initBuildingAdvisor() {
@@ -3524,8 +3555,6 @@
     renderUserBadge();
     renderCommunityPosts();
 
-    const votingState = {};
-
     container.addEventListener('click', e => {
       const btn = e.target.closest('.post-vote');
       if (!btn) return;
@@ -3628,7 +3657,6 @@
       });
     }
 
-    const votingState = {};
     container.querySelectorAll('.post-vote').forEach(btn => {
       btn.addEventListener('click', function(e) {
         const post = this.closest('.post-card');
@@ -3896,10 +3924,7 @@
   }
 
   function initSensitiveZoneMonitor() {
-    const localZones = generateLocalProtectiveZones();
-    const cs = state.caseStudy || CASE_STUDIES['United States'];
-    const existing = cs.sensitiveZones || [];
-    currentSensitiveZones = [...existing, ...localZones];
+    currentSensitiveZones = generateLocalProtectiveZones();
     renderSensitiveZones();
     setInterval(renderSensitiveZones, 30000);
   }
@@ -3914,21 +3939,20 @@
     else if (hour >= 20 && hour < 23) timeFactor = 0.9;
     else timeFactor = 0.6;
 
-    const cs = state.caseStudy || CASE_STUDIES['United States'];
-    const typeMap = cs.zoneGroups || {
-      school: { cards: ['PS 321 School', 'Columbia University'], name: 'NYC Public Schools', icon: 'fa-school', color: '#06B6D4' },
-      hospital: { cards: ['NYU Langone Hospital', 'Mount Sinai Hospital'], name: 'NYC Hospitals', icon: 'fa-hospital', color: '#EF4444' },
-      library: { cards: ['NY Public Library', 'Brooklyn Public Library'], name: 'NYPL Branches', icon: 'fa-book', color: '#F59E0B' },
-      park: { cards: ['Local Park', 'Community Garden'], name: 'Local Parks', icon: 'fa-tree', color: '#10B981' },
-      daycare: { cards: ['Sunshine Daycare', 'Little Stars Preschool'], name: 'Daycare Centers', icon: 'fa-child', color: '#F59E0B' },
-    };
-
-    const locName = state.locationName || cs.name;
+    const locName = state.locationName || state.caseStudy?.name || 'Local';
     const cityShort = locName.split(' ')[0] || 'Local';
+
+    const typeMap = {
+      school: { name: 'Schools & Universities', icon: 'fa-school', color: '#06B6D4' },
+      hospital: { name: 'Hospitals & Clinics', icon: 'fa-hospital', color: '#EF4444' },
+      library: { name: 'Libraries', icon: 'fa-book', color: '#F59E0B' },
+      park: { name: 'Parks & Gardens', icon: 'fa-tree', color: '#10B981' },
+      daycare: { name: 'Daycare Centers', icon: 'fa-child', color: '#F59E0B' },
+    };
 
     Object.keys(typeMap).forEach(type => {
       const t = typeMap[type];
-      const zoneZones = zones.filter(z => t.cards.includes(z.name));
+      const zoneZones = zones.filter(z => z.type === type);
       const avgBase = zoneZones.length > 0 ? zoneZones.reduce((a, z) => a + z.baseNoise, 0) / zoneZones.length : 50;
       const noise = Math.round(avgBase * timeFactor * (0.9 + Math.random() * 0.2));
       const risk = getRiskLevel(noise);
@@ -3961,35 +3985,40 @@
 
     const cs = state.caseStudy || CASE_STUDIES['United States'];
     const base = state.currentNoise || cs.baseNoise || 67;
-    const lat = state.lat || cs.lat;
-    const lng = state.lng || cs.lng;
 
-    const sensorNames = [
-      'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon',
-      'Zeta', 'Eta', 'Theta', 'Iota', 'Kappa',
-    ];
-    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-
-    const sensors = [];
-    const count = randInt(4, 7);
-    for (let i = 0; i < count; i++) {
-      const dist = randInt(30, 500);
-      const dir = directions[randInt(0, directions.length - 1)];
-      const variation = rand(-8, 8);
-      const noise = clamp(Math.round(base + variation), 20, 140);
-      const status = noise > 75 ? 'warning' : noise > 60 ? 'moderate' : 'good';
-      sensors.push({
-        name: 'Sensor ' + sensorNames[i],
-        distance: dist,
-        direction: dir,
-        noise: noise,
-        status: status,
-      });
+    if (!state._sensors) {
+      const sensorNames = [
+        'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon',
+        'Zeta', 'Eta', 'Theta', 'Iota', 'Kappa',
+      ];
+      const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      const lat = state.lat || cs.lat;
+      const lng = state.lng || cs.lng;
+      const count = randInt(4, 7);
+      state._sensors = [];
+      for (let i = 0; i < count; i++) {
+        const dist = randInt(30, 500);
+        const dir = directions[randInt(0, directions.length - 1)];
+        const noise = clamp(Math.round(base + rand(-8, 8)), 20, 140);
+        state._sensors.push({
+          name: 'Sensor ' + sensorNames[i],
+          distance: dist, direction: dir,
+          noise: noise,
+          status: noise > 75 ? 'warning' : noise > 60 ? 'moderate' : 'good',
+        });
+      }
+      state._sensors.sort((a, b) => a.distance - b.distance);
     }
 
-    sensors.sort((a, b) => a.distance - b.distance);
+    const sensors = state._sensors.map(s => {
+      const drift = rand(-2, 2);
+      const newNoise = clamp(s.noise + drift, 20, 140);
+      s.noise = newNoise;
+      s.status = newNoise > 75 ? 'warning' : newNoise > 60 ? 'moderate' : 'good';
+      return s;
+    });
 
-    container.innerHTML = '<div class="sensor-header"><i class="fas fa-satellite-dish"></i> ' + count + ' sensors within 500m</div>' +
+    container.innerHTML = '<div class="sensor-header"><i class="fas fa-satellite-dish"></i> ' + sensors.length + ' sensors within 500m</div>' +
       sensors.map(s => {
         const icons = { good: 'fa-check-circle', moderate: 'fa-exclamation-circle', warning: 'fa-bell' };
         const colors = { good: '#10b981', moderate: '#F59E0B', warning: '#EF4444' };
