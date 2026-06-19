@@ -73,7 +73,7 @@
   function getRiskLevel(db) { return RISK_LEVELS[getRiskIndex(db)]; }
 
   function formatTime(h) {
-    const ampm = h >= 12 ? 'PM' : 'AM';
+    const ampm = h >= 12 ? ' PM' : ' AM';
     const h12 = h % 12 || 12;
     return h12 + ampm;
   }
@@ -1876,6 +1876,8 @@
     micStream: null,
     locationSet: false,
     micSamples: [],
+    pauseInterval: null,
+    isPaused: false,
     trendData: [],
     recordingPhase: null,
     recordingStartTime: null,
@@ -1895,14 +1897,18 @@
   let hourlyChartInstance, forecastChartInstance;
   let mapInstance;
   let updateInterval;
-  let userMarker, userRouteMarker;
+  let userMarker, userRouteMarker, zoneLayer;
   const initializedSections = new Set();
   let currentSensitiveZones = [];
 
   function initRouteMap() {
     const container = document.getElementById('routeMiniMap');
     if (!container || typeof L === 'undefined') return;
-    if (routeMapInstance) { routeMapInstance.invalidateSize(); return; }
+    if (routeMapInstance) {
+      routeMapInstance.setView([state.lat || 40.7704, state.lng || -73.9760]);
+      routeMapInstance.invalidateSize();
+      return;
+    }
     routeMapInstance = L.map('routeMiniMap', {
       center: [state.lat || 40.7704, state.lng || -73.9760],
       zoom: 14, zoomControl: false, attributionControl: false,
@@ -1924,7 +1930,11 @@
 
     const startVal = document.getElementById('routeStart').value;
     const endVal = document.getElementById('routeEnd').value;
-    if (!endVal) { alert('Please enter a destination'); return; }
+    if (!endVal) {
+      document.getElementById('routeEnd').style.borderColor = 'var(--accent)';
+      setTimeout(() => document.getElementById('routeEnd').style.borderColor = '', 2000);
+      return;
+    }
 
     const cs = state.caseStudy || CASE_STUDIES['United States'];
     const presets = cs.landmarks || {};
@@ -2052,7 +2062,6 @@
     const keys = Object.keys(landmarks);
 
     const routeStart = document.getElementById('routeStart');
-    const routeEnd = document.getElementById('routeEnd');
     if (routeStart) {
       routeStart.innerHTML = '<option value="current">📍 Current Location</option>';
       keys.forEach(k => {
@@ -2060,15 +2069,6 @@
         opt.value = k;
         opt.textContent = k;
         routeStart.appendChild(opt);
-      });
-    }
-    if (routeEnd) {
-      routeEnd.innerHTML = '<option value="">Choose destination...</option>';
-      keys.forEach(k => {
-        const opt = document.createElement('option');
-        opt.value = k;
-        opt.textContent = k;
-        routeEnd.appendChild(opt);
       });
     }
   }
@@ -2142,17 +2142,27 @@
 
   function initDarkToggle() {
     const btn = document.getElementById('darkToggle');
+    const savedDark = localStorage.getItem('noisedna-dark');
+    if (savedDark === 'true') {
+      document.body.classList.add('dark');
+      btn.classList.add('active');
+      btn.querySelector('i').className = 'fas fa-sun';
+      btn.querySelector('span').textContent = 'Light Mode';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches && savedDark === null) {
+      document.body.classList.add('dark');
+      btn.classList.add('active');
+      btn.querySelector('i').className = 'fas fa-sun';
+      btn.querySelector('span').textContent = 'Light Mode';
+    }
     btn.addEventListener('click', () => {
       document.body.classList.toggle('dark');
       btn.classList.toggle('active');
       const icon = btn.querySelector('i');
       icon.className = document.body.classList.contains('dark') ? 'fas fa-sun' : 'fas fa-moon';
       btn.querySelector('span').textContent = document.body.classList.contains('dark') ? 'Light Mode' : 'Dark Mode';
+      localStorage.setItem('noisedna-dark', document.body.classList.contains('dark'));
       reRenderThemeDependent();
     });
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      btn.click();
-    }
   }
 
   function setNavMode(mode) {
@@ -2393,9 +2403,12 @@
       state.lat = pos.coords.latitude;
       state.lng = pos.coords.longitude;
       state.locationSet = true;
-      state.hourlyData = generateHourlyData(state.baseNoise);
+      state.hourlyData = generateHourlyData(state.currentNoise || state.baseNoise);
+      state.weeklyData = generateWeeklyData(state.currentNoise || state.baseNoise);
+      currentSensitiveZones = generateLocalProtectiveZones();
       reverseGeocode(state.lat, state.lng);
       updateMapMarkers();
+      renderSensitiveZones();
       renderForecast();
     }
 
@@ -2409,9 +2422,12 @@
               state.lat = data.latitude;
               state.lng = data.longitude;
               state.locationSet = true;
-              state.hourlyData = generateHourlyData(state.baseNoise);
+              state.hourlyData = generateHourlyData(state.currentNoise || state.baseNoise);
+              state.weeklyData = generateWeeklyData(state.currentNoise || state.baseNoise);
+              currentSensitiveZones = generateLocalProtectiveZones();
               reverseGeocode(state.lat, state.lng);
               updateMapMarkers();
+              renderSensitiveZones();
               renderForecast();
             }
           })
@@ -2436,6 +2452,7 @@
           .bindPopup('<b>Start: Your Location</b>');
         routeLayers.push(userRouteMarker);
       }
+      updateMapZones();
     }
 
     const watchId = navigator.geolocation.watchPosition(success, error, options);
@@ -2459,11 +2476,30 @@
   }
 
   function initRecording() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setLabel('Mic not available');
-      return;
+    const btn = document.getElementById('recordBtn');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const isRecording = btn.dataset.recording === 'true';
+        if (isRecording) {
+          stopRecording();
+        } else {
+          if (state.pauseInterval) {
+            clearInterval(state.pauseInterval);
+            state.pauseInterval = null;
+          }
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            startRecording();
+          } else {
+            startSimulatedRecording();
+          }
+        }
+      });
     }
-    setTimeout(startRecording, 1000);
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      setTimeout(startRecording, 1000);
+    } else {
+      setLabel('Mic not available — using simulation');
+    }
   }
 
   function startRecording() {
@@ -2483,6 +2519,7 @@
         state.recordingStartTime = Date.now();
         state.recordingSecond = 0;
         state.recordingStopping = false;
+        state.isPaused = false;
         state.lastAvg = 0;
 
         const btn = document.getElementById('recordBtn');
@@ -2491,6 +2528,7 @@
           btn.classList.add('recording');
           btn.classList.remove('stopping');
           btn.querySelector('i').className = 'fas fa-stop';
+          btn.querySelector('span').textContent = 'Stop';
         }
         setLabel('Recording 0/15s');
 
@@ -2596,16 +2634,20 @@
       btn.dataset.recording = 'false';
       btn.classList.remove('recording', 'stopping');
       btn.querySelector('i').className = 'fas fa-microphone';
+      btn.querySelector('span').textContent = 'Record';
     }
 
     let pauseCount = 5;
     const pauseTimer = document.querySelector('.record-timer');
-    const pauseInterval = setInterval(() => {
+    state.isPaused = true;
+    state.pauseInterval = setInterval(() => {
       pauseCount--;
       if (pauseTimer) pauseTimer.textContent = 'Pause: ' + pauseCount + 's';
       setLabel('Pause ' + pauseCount + '/5s');
       if (pauseCount <= 0) {
-        clearInterval(pauseInterval);
+        clearInterval(state.pauseInterval);
+        state.pauseInterval = null;
+        state.isPaused = false;
         startRecording();
       }
     }, 1000);
@@ -2618,6 +2660,7 @@
     state.recordingStartTime = Date.now();
     state.recordingSecond = 0;
     state.recordingStopping = false;
+    state.isPaused = false;
     state.lastAvg = 0;
     state.usingMic = false;
 
@@ -2629,6 +2672,8 @@
     if (btn) {
       btn.dataset.recording = 'true';
       btn.classList.add('recording');
+      btn.querySelector('i').className = 'fas fa-stop';
+      btn.querySelector('span').textContent = 'Stop';
     }
 
     const cs = state.caseStudy || CASE_STUDIES['United States'];
@@ -2795,6 +2840,7 @@
       const sv = s.value;
       s.value = e.value || 'current';
       e.value = sv;
+      recalculateRoutes();
     });
   }
 
@@ -2811,6 +2857,9 @@
 
   function initRouteFind() {
     document.getElementById('routeFindBtn').addEventListener('click', recalculateRoutes);
+    document.getElementById('routeEnd').addEventListener('keydown', e => {
+      if (e.key === 'Enter') recalculateRoutes();
+    });
   }
 
   function renderDashboard() {
@@ -2916,7 +2965,7 @@
     if (!ctx) return;
     if (forecastChartInstance) forecastChartInstance.destroy();
 
-    const baseNoise = state.baseNoise || 67;
+    const baseNoise = state.currentNoise || state.baseNoise || 67;
     const hours = state.forecastPeriod === 'today' ? state.hourlyData
       : generateHourlyData(baseNoise + rand(-3, 3));
 
@@ -2978,7 +3027,7 @@
   function renderForecastTimeline() {
     const container = document.getElementById('forecastTimeline');
     if (!container) return;
-    const baseNoise = state.baseNoise || 67;
+    const baseNoise = state.currentNoise || state.baseNoise || 67;
     const hours = state.forecastPeriod === 'today' ? state.hourlyData
       : generateHourlyData(baseNoise + rand(-3, 3));
 
@@ -3024,7 +3073,7 @@
     const cs = state.caseStudy || CASE_STUDIES['United States'];
 
     mapInstance = L.map('noiseMap', {
-      center: [cs.lat, cs.lng],
+      center: [state.lat || cs.lat, state.lng || cs.lng],
       zoom: 13,
       zoomControl: true,
     });
@@ -3047,20 +3096,9 @@
       }).addTo(mapInstance);
     });
 
+    zoneLayer = L.layerGroup().addTo(mapInstance);
     const sz = currentSensitiveZones.length > 0 ? currentSensitiveZones : cs.sensitiveZones || [];
-    sz.forEach(z => {
-      const icons = { school: { icon: 'fa-school', color: '#06B6D4' }, hospital: { icon: 'fa-hospital', color: '#EF4444' }, library: { icon: 'fa-book', color: '#F59E0B' } };
-      const zi = icons[z.type] || { icon: 'fa-building', color: '#10B981' };
-      const markerIcon = L.divIcon({
-        html: `<i class="fas ${zi.icon}" style="color:${zi.color};font-size:18px;text-shadow:0 0 8px ${zi.color}44"></i>`,
-        className: '',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
-      L.marker([z.lat, z.lng], { icon: markerIcon })
-        .addTo(mapInstance)
-        .bindPopup(`<b>${z.name}</b><br>Protected Zone`);
-    });
+    addZoneMarkers(sz);
 
     document.querySelectorAll('.map-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -3071,7 +3109,7 @@
 
     document.getElementById('mapHotspots').textContent = state.hotspots.length;
     document.getElementById('mapMax').textContent = Math.max(...state.hotspots.map(h => h.noise)) + ' dB';
-    document.getElementById('mapSensors').textContent = '156';
+    document.getElementById('mapSensors').textContent = state.hotspots ? state.hotspots.length + Math.floor(Math.random() * 50) + 100 + '' : '156';
 
     if (state.lat && state.lng) {
       userMarker = L.circleMarker([state.lat, state.lng], {
@@ -3081,6 +3119,30 @@
     }
 
     setTimeout(() => mapInstance.invalidateSize(), 300);
+  }
+
+  function addZoneMarkers(zones) {
+    if (!zoneLayer || !mapInstance) return;
+    zoneLayer.clearLayers();
+    zones.forEach(z => {
+      const icons = { school: { icon: 'fa-school', color: '#06B6D4' }, hospital: { icon: 'fa-hospital', color: '#EF4444' }, library: { icon: 'fa-book', color: '#F59E0B' } };
+      const zi = icons[z.type] || { icon: 'fa-building', color: '#10B981' };
+      const markerIcon = L.divIcon({
+        html: `<i class="fas ${zi.icon}" style="color:${zi.color};font-size:18px;text-shadow:0 0 8px ${zi.color}44"></i>`,
+        className: '',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+      L.marker([z.lat, z.lng], { icon: markerIcon })
+        .addTo(zoneLayer)
+        .bindPopup(`<b>${z.name}</b><br>Protected Zone`);
+    });
+  }
+
+  function updateMapZones() {
+    if (zoneLayer && currentSensitiveZones.length > 0) {
+      addZoneMarkers(currentSensitiveZones);
+    }
   }
 
   function initBuildingAdvisor() {
@@ -3120,6 +3182,16 @@
   function initLegacyToggle() {
     const btn = document.getElementById('legacyToggle');
     if (!btn) return;
+    const savedLegacy = localStorage.getItem('noisedna-legacy');
+    if (savedLegacy === 'true') {
+      document.body.classList.add('legacy');
+      btn.classList.add('active');
+      btn.querySelector('i').className = 'fas fa-paint-roller';
+      btn.querySelector('span').textContent = 'Legacy';
+      document.getElementById('logoImage').src = 'BlueNoiseDNA.png';
+    } else {
+      document.getElementById('logoImage').src = 'NoiseDNA-icon.png';
+    }
     btn.addEventListener('click', () => {
       const wasLegacy = document.body.classList.contains('legacy');
       document.body.classList.toggle('legacy');
@@ -3133,8 +3205,9 @@
       if (document.body.classList.contains('legacy')) {
         document.getElementById('logoImage').src = 'BlueNoiseDNA.png';
       } else {
-        document.getElementById('logoImage').src = 'NoiseDNA.png';
+        document.getElementById('logoImage').src = 'NoiseDNA-icon.png';
       }
+      localStorage.setItem('noisedna-legacy', document.body.classList.contains('legacy'));
       reRenderThemeDependent();
     });
   }
@@ -3820,6 +3893,12 @@
       saveGlobalReport(report);
       renderReports();
       form.reset();
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent,#10b981);color:#fff;padding:10px 24px;border-radius:8px;font-size:0.7rem;z-index:9999;opacity:0;transition:opacity 0.3s';
+      toast.textContent = 'Report submitted successfully';
+      document.body.appendChild(toast);
+      requestAnimationFrame(() => toast.style.opacity = '1');
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 2500);
     });
 
     renderReports();
@@ -3896,10 +3975,7 @@
   }
 
   function initSensitiveZoneMonitor() {
-    const localZones = generateLocalProtectiveZones();
-    const cs = state.caseStudy || CASE_STUDIES['United States'];
-    const existing = cs.sensitiveZones || [];
-    currentSensitiveZones = [...existing, ...localZones];
+    currentSensitiveZones = generateLocalProtectiveZones();
     renderSensitiveZones();
     setInterval(renderSensitiveZones, 30000);
   }
@@ -3914,21 +3990,20 @@
     else if (hour >= 20 && hour < 23) timeFactor = 0.9;
     else timeFactor = 0.6;
 
-    const cs = state.caseStudy || CASE_STUDIES['United States'];
-    const typeMap = cs.zoneGroups || {
-      school: { cards: ['PS 321 School', 'Columbia University'], name: 'NYC Public Schools', icon: 'fa-school', color: '#06B6D4' },
-      hospital: { cards: ['NYU Langone Hospital', 'Mount Sinai Hospital'], name: 'NYC Hospitals', icon: 'fa-hospital', color: '#EF4444' },
-      library: { cards: ['NY Public Library', 'Brooklyn Public Library'], name: 'NYPL Branches', icon: 'fa-book', color: '#F59E0B' },
-      park: { cards: ['Local Park', 'Community Garden'], name: 'Local Parks', icon: 'fa-tree', color: '#10B981' },
-      daycare: { cards: ['Sunshine Daycare', 'Little Stars Preschool'], name: 'Daycare Centers', icon: 'fa-child', color: '#F59E0B' },
-    };
-
-    const locName = state.locationName || cs.name;
+    const locName = state.locationName || state.caseStudy?.name || 'Local';
     const cityShort = locName.split(' ')[0] || 'Local';
+
+    const typeMap = {
+      school: { name: 'Schools & Universities', icon: 'fa-school', color: '#06B6D4' },
+      hospital: { name: 'Hospitals & Clinics', icon: 'fa-hospital', color: '#EF4444' },
+      library: { name: 'Libraries', icon: 'fa-book', color: '#F59E0B' },
+      park: { name: 'Parks & Gardens', icon: 'fa-tree', color: '#10B981' },
+      daycare: { name: 'Daycare Centers', icon: 'fa-child', color: '#F59E0B' },
+    };
 
     Object.keys(typeMap).forEach(type => {
       const t = typeMap[type];
-      const zoneZones = zones.filter(z => t.cards.includes(z.name));
+      const zoneZones = zones.filter(z => z.type === type);
       const avgBase = zoneZones.length > 0 ? zoneZones.reduce((a, z) => a + z.baseNoise, 0) / zoneZones.length : 50;
       const noise = Math.round(avgBase * timeFactor * (0.9 + Math.random() * 0.2));
       const risk = getRiskLevel(noise);

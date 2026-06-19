@@ -7,8 +7,8 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="format-detection" content="telephone=no" />
         <title>NoiseDNA — Smart City Noise Intelligence Platform</title>
-        <link rel="icon" type="image/png" href="NoiseDNA.png" />
-        <link rel="apple-touch-icon" href="NoiseDNA.png" />
+        <link rel="icon" type="image/png" href="favicon.png" />
+        <link rel="apple-touch-icon" href="apple-touch-icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Oswald:wght@400;500;600;700&display=swap"
@@ -30,14 +30,14 @@
             <div class="sidebar-header">
                 <div class="logo" id="appLogo">
                     <img
-                        src="NoiseDNA.png"
+                        src="NoiseDNA-icon.png"
                         alt="NoiseDNA"
                         class="logo-img"
                         id="logoImage"
                     />
                     <div class="logo-text">
                         <span class="logo-title">NoiseDNA</span>
-                        <span class="logo-subtitle" id="orgSubtitle">Doesnt Just Work, Its Better</span>
+                        <span class="logo-subtitle" id="orgSubtitle">Doesn't Just Work, It's Better</span>
                     </div>
                 </div>
             </div>
@@ -53,10 +53,6 @@
                 <a href="#" class="nav-item" data-section="forecast">
                     <i class="fas fa-chart-line"></i>
                     <span>Forecast</span>
-                </a>
-                <a href="#" class="nav-item" data-section="routes">
-                    <i class="fas fa-route"></i>
-                    <span>Quiet Routes</span>
                 </a>
                 <a href="#" class="nav-item" data-section="advisor">
                     <i class="fas fa-building"></i>
@@ -335,7 +331,7 @@
                         </div>
                         <div class="clippy-body">
                             <div class="clippy-avatar">
-                                <img src="Clippy2.png" alt="Clippy" class="clippy-img" />
+                                <img src="Clippy2.png" alt="Clippy" class="clippy-img" width="60" height="60" />
                             </div>
                             <div class="clippy-message" id="clippyMessage">
                                 Hi! I'm <strong>Clippy</strong> — your NoiseDNA assistant. Click the tips below to learn more!
@@ -506,132 +502,6 @@
                         </div>
                     </div>
                 </div>
-            </section>
-
-            
-            <section class="page-section" id="page-routes">
-                <div class="page-header">
-                    <h1>Quiet Route Navigation</h1>
-                    <p class="page-subtitle">
-                        Find the quietest path from your location to any destination
-                    </p>
-                </div>
-
-                <div class="route-inputs">
-                    <div class="route-input-group">
-                        <div class="input-icon">
-                            <i class="fas fa-circle-dot" style="color: #10b981"></i>
-                        </div>
-                        <select class="route-input route-select" id="routeStart">
-                            <option value="current">📍 Current Location</option>
-                            <option value="Times Square, NYC">Times Square</option>
-                            <option value="Grand Central Terminal">Grand Central</option>
-                            <option value="Brooklyn Bridge">Brooklyn Bridge</option>
-                            <option value="Central Park">Central Park</option>
-                            <option value="Union Square">Union Square</option>
-                        </select>
-                    </div>
-                    <div class="route-swap" id="routeSwap">
-                        <i class="fas fa-arrow-right-arrow-left"></i>
-                    </div>
-                    <div class="route-input-group">
-                        <div class="input-icon">
-                            <i class="fas fa-location-dot" style="color: #ef4444"></i>
-                        </div>
-                        <input class="route-input" id="routeEnd" type="text" placeholder="Type a destination..." value="Central Park" />
-                    </div>
-                    <button class="route-find-btn" id="routeFindBtn">
-                        <i class="fas fa-magnifying-glass"></i> Find Routes
-                    </button>
-                </div>
-
-                <div class="route-results" id="routeResults">
-                    <div class="route-card fastest" data-route="fastest">
-                        <div class="route-type">
-                            <i class="fas fa-bolt"></i>
-                            <span>Fastest Route</span>
-                        </div>
-                        <div class="route-details">
-                            <div class="route-detail">
-                                <i class="fas fa-clock"></i>
-                                <span>18 min</span>
-                            </div>
-                            <div class="route-detail">
-                                <i class="fas fa-ruler"></i>
-                                <span>4.2 km</span>
-                            </div>
-                            <div class="route-detail">
-                                <i class="fas fa-volume-up"></i>
-                                <span>72 dB avg</span>
-                            </div>
-                            <div class="route-detail">
-                                <i class="fas fa-star"></i>
-                                <span>Noise Score: 64</span>
-                            </div>
-                        </div>
-                        <div class="route-bar" style="--pct: 100%"></div>
-                        <div class="route-select-btn">Select</div>
-                    </div>
-
-                    <div
-                        class="route-card balanced active"
-                        data-route="balanced"
-                    >
-                        <div class="route-type">
-                            <i class="fas fa-scale-balanced"></i>
-                            <span>Balanced Route</span>
-                        </div>
-                        <div class="route-details">
-                            <div class="route-detail">
-                                <i class="fas fa-clock"></i>
-                                <span>24 min</span>
-                            </div>
-                            <div class="route-detail">
-                                <i class="fas fa-ruler"></i>
-                                <span>5.1 km</span>
-                            </div>
-                            <div class="route-detail">
-                                <i class="fas fa-volume-up"></i>
-                                <span>58 dB avg</span>
-                            </div>
-                            <div class="route-detail">
-                                <i class="fas fa-star"></i>
-                                <span>Noise Score: 82</span>
-                            </div>
-                        </div>
-                        <div class="route-bar" style="--pct: 72%"></div>
-                        <div class="route-select-btn">Selected</div>
-                    </div>
-
-                    <div class="route-card quietest" data-route="quietest">
-                        <div class="route-type">
-                            <i class="fas fa-leaf"></i>
-                            <span>Quietest Route</span>
-                        </div>
-                        <div class="route-details">
-                            <div class="route-detail">
-                                <i class="fas fa-clock"></i>
-                                <span>32 min</span>
-                            </div>
-                            <div class="route-detail">
-                                <i class="fas fa-ruler"></i>
-                                <span>6.8 km</span>
-                            </div>
-                            <div class="route-detail">
-                                <i class="fas fa-volume-up"></i>
-                                <span>45 dB avg</span>
-                            </div>
-                            <div class="route-detail">
-                                <i class="fas fa-star"></i>
-                                <span>Noise Score: 94</span>
-                            </div>
-                        </div>
-                        <div class="route-bar" style="--pct: 52%"></div>
-                        <div class="route-select-btn">Select</div>
-                    </div>
-                </div>
-
-                <div class="route-map-mini" id="routeMiniMap"></div>
             </section>
 
             
